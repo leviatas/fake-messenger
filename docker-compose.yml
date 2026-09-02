@@ -20,6 +20,20 @@ services:
       retries: 3
       start_period: 5s
 
+  # Tunel de Cloudflare: publica la app en internet sin abrir puertos.
+  # Solo arranca con el perfil "tunnel" y necesita CLOUDFLARE_TUNNEL_TOKEN.
+  # En el panel de Cloudflare, el hostname debe apuntar a http://app:3000.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Falta CLOUDFLARE_TUNNEL_TOKEN, ejecuta ./deploy.sh}
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
   # Comprobaciones: tipos del cliente y del servidor + tests del backend.
   test:
     build:
