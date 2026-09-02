@@ -40,6 +40,16 @@ El script se encarga de todo:
 3. Escribe el `.env` con ese puerto y la contrasena de la mesa (permisos `600`).
 4. Busca un token de Cloudflare y, si lo encuentra, levanta tambien el tunel.
 5. Construye las imagenes, arranca los contenedores y espera a que la app responda.
+6. Si hay tunel, comprueba que `cloudflared` sigue en marcha y ha registrado la
+   conexion con Cloudflare; si se ha caido, enseña el registro y termina con
+   codigo de salida 1 (la app se queda funcionando en local igualmente).
+
+Basta con que el token este puesto —por opcion, por variable de entorno, en el
+`.env` o en un fichero— para que el script levante tambien `cloudflared`. Con
+`--no-tunnel` lo deja apagado aunque haya token.
+
+Los tiempos de espera se pueden ajustar con `HEALTH_TIMEOUT` (90 s por defecto)
+y `TUNNEL_TIMEOUT` (40 s).
 
 El token del tunel se busca por este orden: `--tunnel-token`, `--token-file`, las
 variables `CLOUDFLARE_TUNNEL_TOKEN` / `TUNNEL_TOKEN` / `CLOUDFLARED_TOKEN`, el

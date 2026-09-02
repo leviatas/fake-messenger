@@ -14,7 +14,8 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 ENV_FILE=".env"
 PORT_BASE_DEFAULT=3000
 PORT_SCAN_LIMIT=100
-HEALTH_TIMEOUT=90
+HEALTH_TIMEOUT=${HEALTH_TIMEOUT:-90}
+TUNNEL_TIMEOUT=${TUNNEL_TIMEOUT:-40}
 
 # Sitios donde buscamos el token del tunel si no viene por opcion ni por entorno.
 TOKEN_FILES=(
@@ -97,6 +98,22 @@ for value in "$PORT_BASE" ${PORT_FIXED:+"$PORT_FIXED"}; do
   [[ $value =~ ^[0-9]+$ ]] && (( value >= 1 && value <= 65535 )) \
     || die "Puerto no valido: $value"
 done
+
+# ------------------------------------------------------- token en el entorno
+
+# Copiamos aqui el token que venga por variable de entorno, ANTES de tocar nada:
+# una de las variables que miramos (TUNNEL_TOKEN) se llama igual que la que usa
+# el script para su propio valor, y al inicializarla la perderiamos.
+ENV_TOKEN=""
+ENV_TOKEN_SOURCE=""
+for _name in CLOUDFLARE_TUNNEL_TOKEN TUNNEL_TOKEN CLOUDFLARED_TOKEN; do
+  if [[ -n ${!_name:-} ]]; then
+    ENV_TOKEN=${!_name}
+    ENV_TOKEN_SOURCE="la variable $_name"
+    break
+  fi
+done
+unset _name
 
 # ------------------------------------------------------------------ .env previo
 
@@ -188,14 +205,11 @@ find_tunnel_token() {
     return 0
   fi
 
-  local name
-  for name in CLOUDFLARE_TUNNEL_TOKEN TUNNEL_TOKEN CLOUDFLARED_TOKEN; do
-    if [[ -n ${!name:-} ]]; then
-      TOKEN_SOURCE="la variable $name"
-      TUNNEL_TOKEN=${!name}
-      return 0
-    fi
-  done
+  if [[ -n $ENV_TOKEN ]]; then
+    TUNNEL_TOKEN=$ENV_TOKEN
+    TOKEN_SOURCE=$ENV_TOKEN_SOURCE
+    return 0
+  fi
 
   if [[ -n $PREVIOUS_TOKEN ]]; then
     TUNNEL_TOKEN=$PREVIOUS_TOKEN
@@ -224,6 +238,29 @@ require_docker() {
     || die "Hace falta Docker Compose v2 (el subcomando 'docker compose')."
   docker info >/dev/null 2>&1 \
     || die "El demonio de Docker no responde. Arrancalo y vuelve a intentarlo."
+}
+
+# El contenedor del servicio existe y esta corriendo.
+container_running() {
+  local service=$1 cid
+  cid=$(docker compose "${COMPOSE_ARGS[@]}" ps -q "$service" 2>/dev/null | head -n 1)
+  [[ -n $cid ]] || return 1
+  [[ $(docker inspect -f '{{.State.Running}}' "$cid" 2>/dev/null) == "true" ]]
+}
+
+# cloudflared escribe "Registered tunnel connection" cuando el tunel esta arriba.
+wait_tunnel_connected() {
+  local waited=0
+  while (( waited < TUNNEL_TIMEOUT )); do
+    if docker compose "${COMPOSE_ARGS[@]}" logs --no-color --tail 200 cloudflared 2>/dev/null \
+        | grep -qi "registered tunnel connection"; then
+      return 0
+    fi
+    container_running cloudflared || return 2   # se ha caido
+    sleep 2
+    waited=$(( waited + 2 ))
+  done
+  return 1
 }
 
 wait_until_healthy() {
@@ -346,16 +383,49 @@ case "$(wait_until_healthy "$HEALTH_URL" && echo 0 || echo $?)" in
     ;;
 esac
 
+TUNNEL_STATE="apagado"
+TUNNEL_FAILED=0
+
+if [[ " ${SERVICES[*]} " == *" cloudflared "* ]]; then
+  step "Comprobando el tunel de Cloudflare"
+  if ! container_running cloudflared; then
+    warn "El contenedor cloudflared no esta en marcha. Ultimas lineas del registro:"
+    docker compose "${COMPOSE_ARGS[@]}" logs --no-color --tail 20 cloudflared 2>&1 | sed 's/^/      /' >&2
+    TUNNEL_STATE="caido (revisa el token)"
+    TUNNEL_FAILED=1
+  else
+    case "$(wait_tunnel_connected && echo 0 || echo $?)" in
+      0)
+        ok "Tunel conectado con Cloudflare."
+        TUNNEL_STATE="conectado"
+        ;;
+      2)
+        warn "cloudflared arranco pero se ha parado. Ultimas lineas del registro:"
+        docker compose "${COMPOSE_ARGS[@]}" logs --no-color --tail 20 cloudflared 2>&1 | sed 's/^/      /' >&2
+        TUNNEL_STATE="caido (revisa el token)"
+        TUNNEL_FAILED=1
+        ;;
+      *)
+        warn "cloudflared sigue en marcha pero aun no ha registrado la conexion."
+        warn "Miralo con: docker compose --profile tunnel logs -f cloudflared"
+        TUNNEL_STATE="en marcha, sin confirmar"
+        ;;
+    esac
+  fi
+fi
+
 echo
 ok "Desplegado."
 info "Local:      http://localhost:${PORT}"
 info "Contrasena: $PASSWORD"
-if [[ -n $TUNNEL_TOKEN ]] && (( USE_TUNNEL )); then
-  info "Tunel:      cloudflared en marcha."
+info "Tunel:      $TUNNEL_STATE"
+if [[ $TUNNEL_STATE != "apagado" ]] && (( ! TUNNEL_FAILED )); then
   info "            En el panel de Cloudflare, apunta el hostname a http://app:3000"
   info "            Registro: docker compose --profile tunnel logs -f cloudflared"
-else
-  info "Tunel:      apagado."
 fi
 info "Registro:   docker compose logs -f app"
 info "Parar:      docker compose ${COMPOSE_ARGS[*]} down"
+
+# La app esta arriba, pero si el tunel no ha levantado el despliegue no es el
+# que se pidio: lo decimos con el codigo de salida.
+exit "$TUNNEL_FAILED"
