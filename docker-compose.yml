@@ -28,7 +28,9 @@ services:
     profiles: ["tunnel"]
     command: ["tunnel", "--no-autoupdate", "run"]
     environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Falta CLOUDFLARE_TUNNEL_TOKEN, ejecuta ./deploy.sh}
+      # Sin valor por defecto Compose fallaria al interpolar el fichero entero,
+      # incluso al levantar solo "app": los perfiles se filtran despues.
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
     depends_on:
       app:
         condition: service_healthy

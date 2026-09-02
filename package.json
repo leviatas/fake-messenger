@@ -3,15 +3,22 @@
   "private": true,
   "version": "1.0.0",
   "description": "App de mensajeria para partidas de rol: DM, jugadores y voyeristas",
-  "workspaces": ["shared", "server", "client"],
-  "engines": { "node": ">=20" },
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "npm run build -w shared && npm run build -w server && npm run build -w client",
     "dev": "npm run build -w shared && concurrently -n server,client -c blue,magenta \"npm run dev -w server\" \"npm run dev -w client\"",
     "start": "node server/dist/index.js",
     "test": "npm run build -w shared && npm run test -w server",
     "typecheck": "npm run build -w shared && npm run typecheck -w server && npm run typecheck -w client",
-    "check": "npm run typecheck && npm run test"
+    "check": "npm run typecheck && npm run test && npm run check:compose",
+    "check:compose": "./scripts/check-compose.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

@@ -182,9 +182,15 @@ npm start            # sirve el SPA y el WebSocket en http://localhost:3000
 ## Comprobaciones
 
 ```bash
-npm run check        # typecheck de los tres paquetes + tests del backend
+npm run check        # typecheck + tests + validacion del docker-compose.yml
 npm test             # solo los tests (Vitest: reglas de visibilidad, permisos, REST y WebSocket)
+npm run check:compose  # que el compose interpole bien en todos los perfiles
 ```
+
+`check:compose` existe porque Compose interpola el fichero **entero** antes de
+filtrar por perfiles: una variable obligatoria en un servicio apagado, como el
+token del tunel, rompe hasta un `docker compose up app`. Si no hay `docker` en
+la maquina, la comprobacion se salta sin fallar.
 
 ## Como se usa
 
@@ -212,6 +218,7 @@ npm test             # solo los tests (Vitest: reglas de visibilidad, permisos, 
 
 ```
 deploy.sh  prepara el .env (puerto libre + token) y levanta los contenedores
+scripts/   comprobaciones sueltas (validacion del docker-compose.yml)
 shared/    tipos y constantes compartidos (protocolo REST y WebSocket)
 server/    Express + ws, estado de las partidas y reglas de visibilidad
   src/store.ts    quien ve que, quien puede escribir, borrar o expulsar
