@@ -1,0 +1,58 @@
+services:
+  # Produccion: un unico contenedor que sirve el SPA y el WebSocket.
+  app:
+    build:
+      context: .
+      target: runtime
+    image: fake-messenger:latest
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      ROLEPLAY_PASSWORD: ${ROLEPLAY_PASSWORD:-MeGustaElRol}
+      DATA_DIR: /app/data
+    volumes:
+      - partidas:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Comprobaciones: tipos del cliente y del servidor + tests del backend.
+  test:
+    build:
+      context: .
+      target: build
+    image: fake-messenger-build:latest
+    profiles: ["test"]
+    environment:
+      CI: "true"
+      PERSIST: "0"
+    command: ["npm", "run", "check"]
+
+  # Desarrollo: Vite en 5173 con recarga en caliente y el backend en 3000.
+  dev:
+    build:
+      context: .
+      target: dev
+    profiles: ["dev"]
+    ports:
+      - "5173:5173"
+      - "3000:3000"
+    environment:
+      ROLEPLAY_PASSWORD: ${ROLEPLAY_PASSWORD:-MeGustaElRol}
+      DATA_DIR: /app/data
+    volumes:
+      - ./shared/src:/app/shared/src
+      - ./server/src:/app/server/src
+      - ./server/test:/app/server/test
+      - ./client/src:/app/client/src
+      - ./client/index.html:/app/client/index.html
+      - partidas-dev:/app/data
+    command: ["npm", "run", "dev"]
+
+volumes:
+  partidas:
+  partidas-dev:
