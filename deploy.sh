@@ -369,6 +369,13 @@ if (( DRY_RUN )); then
   exit 0
 fi
 
+step "Validando la configuracion de Compose"
+if ! compose_error=$(docker compose "${COMPOSE_ARGS[@]}" config --quiet 2>&1); then
+  printf '%s\n' "$compose_error" | sed 's/^/      /' >&2
+  die "docker-compose.yml no es valido con este .env."
+fi
+ok "docker-compose.yml correcto."
+
 step "Levantando ${SERVICES[*]}"
 docker compose "${COMPOSE_ARGS[@]}" "${UP_ARGS[@]}" "${SERVICES[@]}"
 
