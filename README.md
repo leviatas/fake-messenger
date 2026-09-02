@@ -56,9 +56,75 @@ variables `CLOUDFLARE_TUNNEL_TOKEN` / `TUNNEL_TOKEN` / `CLOUDFLARED_TOKEN`, el
 ./deploy.sh --help                         # todas las opciones
 ```
 
-En el panel de Cloudflare, el hostname publico del tunel tiene que apuntar a
-`http://app:3000`: el contenedor `cloudflared` llega al servicio `app` por la red
-interna de Compose, asi que no hace falta publicar ningun puerto hacia fuera.
+## Publicar la partida con un tunel de Cloudflare
+
+El tunel deja la app accesible desde internet **sin abrir puertos en el router**:
+el contenedor `cloudflared` abre la conexion hacia fuera y Cloudflare le pasa el
+trafico. Hace falta un dominio en Cloudflare y una cuenta gratuita.
+
+### 1. Sacar el token
+
+En [dash.cloudflare.com](https://dash.cloudflare.com):
+
+1. Ve a **Networking → Tunnels** (en el panel de Cloudflare One / Zero Trust la
+   ruta es **Networks → Connectors → Cloudflare Tunnels**).
+2. **Create a tunnel** → conector **Cloudflared** → ponle un nombre
+   (por ejemplo `rol`) → **Save**.
+3. En la pantalla de instalacion, Cloudflare muestra un comando del tipo
+   `cloudflared service install eyJhIjoiNWFiNGU5Z...`. **No lo ejecutes**: de eso
+   se encarga el contenedor. Copia solo la cadena larga que empieza por `eyJ...`,
+   que es el token.
+
+Si el tunel ya existe, entra en el y usa **Edit** (o **Add a replica**) para ver
+otra vez ese comando. **Refresh token** genera uno nuevo e invalida el anterior.
+
+Tambien se puede pedir por API, con un token de Cloudflare que tenga el permiso
+*Cloudflare Tunnel Write* (o *Cloudflare One Connector: cloudflared Write*):
+
+```bash
+curl -s "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/cfd_tunnel/$TUNNEL_ID/token" \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+```
+
+### 2. Apuntar el hostname publico a la app
+
+En el mismo tunel, pestana **Public hostname** → **Add a public hostname**:
+
+| Campo | Valor |
+|---|---|
+| Subdomain / Domain | el que quieras, p. ej. `rol` + `midominio.com` |
+| Type | `HTTP` |
+| URL | `app:3000` |
+
+`app:3000` es el nombre del servicio dentro de la red de Compose, no una direccion
+de tu maquina: por eso el tunel funciona aunque la app no publique ningun puerto
+hacia fuera. Va en HTTP plano a proposito — el HTTPS lo pone Cloudflare por
+delante. Los WebSockets del chat pasan por el tunel sin configuracion extra.
+
+### 3. Desplegar con el token
+
+```bash
+./deploy.sh --tunnel-token "eyJhIjoi..."
+```
+
+O deja el token en un fichero y olvidate de la opcion:
+
+```bash
+echo "eyJhIjoi..." > cloudflared.token   # ignorado por git
+./deploy.sh
+```
+
+El token queda guardado en el `.env` (permisos `600`), asi que los siguientes
+despliegues ya no necesitan que se lo pases.
+
+```bash
+docker compose --profile tunnel logs -f cloudflared   # ver el estado del tunel
+docker compose --profile tunnel down                  # parar app y tunel
+```
+
+> Quien tenga el token puede levantar el tunel: no lo subas al repositorio ni lo
+> pegues en un chat. Si se te escapa, usa **Refresh token** en el panel y vuelve a
+> ejecutar `./deploy.sh --tunnel-token <nuevo>`.
 
 ## Arrancar con Docker Compose
 

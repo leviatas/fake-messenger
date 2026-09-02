@@ -144,3 +144,7 @@ vite.config.ts.timestamp-*
 
 # Estado de las partidas guardado en disco
 data/
+
+# Token del tunel de Cloudflare
+cloudflared.token
+.cloudflared-token
