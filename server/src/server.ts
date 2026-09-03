@@ -4,15 +4,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { WebSocket, WebSocketServer } from 'ws';
-import type { ClientCommand, ServerEvent } from '@rol/shared';
+import { ADMIN_TOKEN_HEADER, type ClientCommand, type ServerEvent } from '@rol/shared';
+import * as admin from './admin.js';
 import * as store from './store.js';
 import { AppError, type Channel, type Game, type Member } from './types.js';
+import { APP_VERSION } from './version.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_CLIENT_DIR = path.resolve(here, '../../client/dist');
 
 export interface ServerOptions {
   password?: string;
+  /** Contrasena del panel de administracion. Por defecto, la de la mesa. */
+  adminPassword?: string;
   clientDir?: string;
 }
 
@@ -26,6 +30,8 @@ type TaggedSocket = WebSocket & { ctx: SocketContext | null; isAlive: boolean };
 
 export function createServer(options: ServerOptions = {}) {
   const password = options.password ?? process.env.ROLEPLAY_PASSWORD ?? 'MeGustaElRol';
+  // Si no hay ADMIN_PASSWORD, el panel se abre con la contrasena de la mesa.
+  const adminPassword = options.adminPassword ?? process.env.ADMIN_PASSWORD ?? password;
   const clientDir = options.clientDir ?? process.env.CLIENT_DIR ?? DEFAULT_CLIENT_DIR;
 
   const app = express();
@@ -80,7 +86,7 @@ export function createServer(options: ServerOptions = {}) {
   // ------------------------------------------------------------------- REST
 
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true });
+    res.json({ ok: true, version: APP_VERSION });
   });
 
   // Crear partida: hace falta la contrasena de la mesa y un nombre.
@@ -115,6 +121,47 @@ export function createServer(options: ServerOptions = {}) {
       game: { id: game.id, name: game.name },
       me: { id: member.id, name: member.name, role: member.role },
     });
+  });
+
+  // ------------------------------------------------ panel de administracion
+
+  /** Echa de la partida a quien siga conectado cuando esta desaparece. */
+  function closeRoom(gameId: string): void {
+    for (const client of [...room(gameId)]) {
+      send(client, { type: 'kicked' });
+      client.ctx = null;
+      client.close();
+    }
+    rooms.delete(gameId);
+  }
+
+  // Entrar en el panel: devuelve un token propio, corto y solo en memoria.
+  app.post('/api/admin/login', (req, res) => {
+    const origin = req.ip ?? 'desconocido';
+    admin.checkAttempts(origin);
+    const { password: given } = (req.body ?? {}) as { password?: string };
+    if (!admin.samePassword(given, adminPassword)) {
+      admin.registerFailure(origin);
+      throw new AppError('Contrasena incorrecta.', 403);
+    }
+    res.json({ token: admin.openSession(origin), version: APP_VERSION });
+  });
+
+  app.post('/api/admin/logout', (req, res) => {
+    admin.closeSession(req.get(ADMIN_TOKEN_HEADER));
+    res.json({ ok: true });
+  });
+
+  app.get('/api/admin/games', (req, res) => {
+    admin.requireSession(req.get(ADMIN_TOKEN_HEADER));
+    res.json({ version: APP_VERSION, games: store.listGames().map(store.projectAdminGame) });
+  });
+
+  app.delete('/api/admin/games/:id', (req, res) => {
+    admin.requireSession(req.get(ADMIN_TOKEN_HEADER));
+    const game = store.deleteGame(req.params.id);
+    closeRoom(game.id);
+    res.json({ ok: true });
   });
 
   // ------------------------------------------------------- estaticos del SPA
@@ -177,8 +224,15 @@ export function createServer(options: ServerOptions = {}) {
       const ctx = ws.ctx;
       if (!ctx) return;
       ws.ctx = null;
-      const game = store.getGame(ctx.gameId);
       room(ctx.gameId).delete(ws);
+      // La partida puede haber desaparecido ya (borrada desde el panel).
+      let game: Game;
+      try {
+        game = store.getGame(ctx.gameId);
+      } catch {
+        rooms.delete(ctx.gameId);
+        return;
+      }
       const stillOpen = [...room(ctx.gameId)].some((c) => c.ctx?.memberId === ctx.memberId);
       const member = game.members[ctx.memberId];
       if (member && !stillOpen) member.online = false;
@@ -296,5 +350,5 @@ export function createServer(options: ServerOptions = {}) {
     await new Promise<void>((resolve) => httpServer.close(() => resolve()));
   }
 
-  return { app, httpServer, wss, close, password, clientDir };
+  return { app, httpServer, wss, close, password, adminPassword, clientDir, version: APP_VERSION };
 }

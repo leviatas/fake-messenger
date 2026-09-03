@@ -2,10 +2,12 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 import type { ClientCommand, GameState, ServerEvent } from '@rol/shared';
+import * as admin from '../src/admin.js';
 import { createServer } from '../src/server.js';
 import * as store from '../src/store.js';
 
 const PASSWORD = 'MeGustaElRol';
+const ADMIN_PASSWORD = 'SoyElJefe';
 
 let instance: ReturnType<typeof createServer>;
 let base: string;
@@ -14,7 +16,12 @@ const sockets: WebSocket[] = [];
 
 beforeEach(async () => {
   store.reset();
-  instance = createServer({ password: PASSWORD, clientDir: '/tmp/no-client-here' });
+  admin.reset();
+  instance = createServer({
+    password: PASSWORD,
+    adminPassword: ADMIN_PASSWORD,
+    clientDir: '/tmp/no-client-here',
+  });
   await new Promise<void>((resolve) => instance.httpServer.listen(0, '127.0.0.1', resolve));
   const { port } = instance.httpServer.address() as AddressInfo;
   base = `http://127.0.0.1:${port}`;
@@ -74,6 +81,22 @@ class TestClient {
     if (!last) throw new Error('Sin estado');
     return last as GameState & { type: 'state' };
   }
+}
+
+async function request<T>(
+  method: string,
+  url: string,
+  init: { body?: unknown; adminToken?: string } = {},
+): Promise<{ status: number; data: T }> {
+  const headers: Record<string, string> = {};
+  if (init.body !== undefined) headers['content-type'] = 'application/json';
+  if (init.adminToken) headers['x-admin-token'] = init.adminToken;
+  const res = await fetch(`${base}${url}`, {
+    method,
+    headers,
+    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+  });
+  return { status: res.status, data: (await res.json()) as T };
 }
 
 async function newGame() {
@@ -238,5 +261,101 @@ describe('flujo por WebSocket', () => {
     socket.send(JSON.stringify({ type: 'ping' }));
     const event = await received;
     expect(event).toMatchObject({ type: 'error' });
+  });
+});
+
+describe('version', () => {
+  it('el estado de salud incluye la version', async () => {
+    const res = await request<{ ok: boolean; version: string }>('GET', '/api/health');
+    expect(res.status).toBe(200);
+    expect(res.data.ok).toBe(true);
+    expect(res.data.version).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});
+
+describe('panel de administracion', () => {
+  async function login() {
+    const res = await post<{ token: string }>('/api/admin/login', { password: ADMIN_PASSWORD });
+    expect(res.status).toBe(200);
+    return res.data.token;
+  }
+
+  it('no deja entrar con una contrasena que no es la del panel', async () => {
+    expect((await post('/api/admin/login', { password: PASSWORD })).status).toBe(403);
+    expect((await post('/api/admin/login', { password: '' })).status).toBe(403);
+  });
+
+  it('corta los intentos repetidos', async () => {
+    for (let i = 0; i < 5; i++) {
+      expect((await post('/api/admin/login', { password: 'nope' })).status).toBe(403);
+    }
+    expect((await post('/api/admin/login', { password: 'nope' })).status).toBe(429);
+    // Con la contrasena buena tampoco: el freno es del origen, no del intento.
+    expect((await post('/api/admin/login', { password: ADMIN_PASSWORD })).status).toBe(429);
+  });
+
+  it('exige el token en las rutas del panel', async () => {
+    expect((await request('GET', '/api/admin/games')).status).toBe(401);
+    expect((await request('GET', '/api/admin/games', { adminToken: 'basura' })).status).toBe(401);
+    expect((await request('DELETE', '/api/admin/games/game_x', { adminToken: 'basura' })).status).toBe(401);
+  });
+
+  it('lista las partidas con sus jugadores', async () => {
+    const codes = await newGame();
+    await join(codes.dm, 'Master');
+    await join(codes.player, 'Kaelen');
+
+    const token = await login();
+    const res = await request<{ games: { name: string; members: { name: string }[] }[] }>(
+      'GET',
+      '/api/admin/games',
+      { adminToken: token },
+    );
+    expect(res.status).toBe(200);
+    expect(res.data.games).toHaveLength(1);
+    expect(res.data.games[0]!.members.map((m) => m.name)).toEqual(['Master', 'Kaelen']);
+  });
+
+  it('borra una partida y echa a quien estaba dentro', async () => {
+    const codes = await newGame();
+    const joined = await join(codes.player, 'Kaelen');
+    const kaelen = await TestClient.connect(joined.token);
+    const gameId = kaelen.state.game.id;
+
+    const token = await login();
+    expect((await request('DELETE', `/api/admin/games/${gameId}`, { adminToken: token })).status).toBe(200);
+
+    await kaelen.waitFor('kicked');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(kaelen.socket.readyState).toBe(WebSocket.CLOSED);
+    expect((await post('/api/session', { token: joined.token })).status).toBe(401);
+    expect((await post('/api/join', { code: codes.player, name: 'Otro' })).status).toBe(404);
+  });
+
+  it('el token deja de valer despues de salir', async () => {
+    const token = await login();
+    expect((await request('POST', '/api/admin/logout', { body: {}, adminToken: token })).status).toBe(200);
+    expect((await request('GET', '/api/admin/games', { adminToken: token })).status).toBe(401);
+  });
+});
+
+describe('volver a entrar en la partida', () => {
+  it('deja volver con el mismo nombre si nadie esta conectado con el', async () => {
+    const codes = await newGame();
+    const first = await join(codes.player, 'Kaelen');
+    const kaelen = await TestClient.connect(first.token);
+
+    // Con Kaelen conectado el nombre esta ocupado.
+    const rejected = await post<{ error: string }>('/api/join', { code: codes.player, name: 'Kaelen' });
+    expect(rejected.status).toBe(409);
+    expect(rejected.data.error).toMatch(/conectado/i);
+
+    kaelen.send({ type: 'leave' });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const again = await join(codes.player, 'Kaelen');
+    expect(again.me.id).toBe(first.me.id);
+    const back = await TestClient.connect(again.token);
+    expect(back.state.members.filter((m) => m.name === 'Kaelen')).toHaveLength(1);
   });
 });

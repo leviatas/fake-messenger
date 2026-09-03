@@ -38,13 +38,6 @@ body { overflow: hidden; overscroll-behavior: none; }
 
 button, a { -webkit-tap-highlight-color: transparent; }
 
-/* dvh sigue a las barras del navegador movil; vh es el respaldo. */
-.view {
-  height: 100vh;
-  height: 100dvh;
-  /* Lo pone useViewportHeight: sigue al teclado virtual del movil. */
-  height: var(--app-vh, 100dvh);
-}
 
 button { font: inherit; cursor: pointer; }
 input, textarea { font: inherit; }
@@ -55,8 +48,8 @@ input, textarea { font: inherit; }
 
 .screen {
   height: 100vh;
-  height: 100dvh;
-  height: var(--app-vh, 100dvh);
+  /* dvh sigue a la barra del navegador; --keyboard lo pone useViewportHeight. */
+  height: calc(100dvh - var(--keyboard, 0px));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -175,8 +168,8 @@ button.small { padding: 6px 10px; font-size: 13px; }
 .app {
   display: flex;
   height: 100vh;
-  height: 100dvh;
-  height: var(--app-vh, 100dvh);
+  /* dvh sigue a la barra del navegador; --keyboard lo pone useViewportHeight. */
+  height: calc(100dvh - var(--keyboard, 0px));
 }
 
 .sidebar {
@@ -212,7 +205,8 @@ button.small { padding: 6px 10px; font-size: 13px; }
   gap: 6px;
   min-width: 0;
 }
-.me-line > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-line .me-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-line .badge { flex: none; }
 
 .conn {
   width: 9px; height: 9px;
@@ -514,6 +508,116 @@ button.small { padding: 6px 10px; font-size: 13px; }
   font-weight: 600;
 }
 
+/* ------------------------------------------------------ pie con la version */
+
+.app-footer {
+  margin: 18px 0 0;
+  text-align: center;
+}
+.app-footer .version {
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: .4px;
+  opacity: .75;
+}
+.app-footer .version:hover { color: var(--text); opacity: 1; }
+
+.sidebar-foot .app-footer { margin: 6px 0 0; }
+
+/* Enlace para invitar, junto al nombre de quien mira. */
+.share-link {
+  flex: none;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.share-link:hover { background: var(--accent-soft); }
+
+/* -------------------------------------------- panel de administracion */
+
+.modal.admin { max-width: 560px; }
+
+.admin-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.admin-head h2 { flex: 1; margin: 0; font-size: 18px; }
+.admin-head .icon-btn { margin: 0; min-width: 34px; min-height: 34px; font-size: 16px; }
+
+.admin-list { list-style: none; margin: 0; padding: 0; }
+
+.admin-game {
+  margin-bottom: 12px;
+  padding: 14px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.admin-game > header { display: flex; align-items: flex-start; gap: 10px; }
+.admin-game-id { flex: 1; min-width: 0; }
+.admin-game-id strong { display: block; font-size: 15px; }
+.admin-game-id small { display: block; color: var(--muted); font-size: 12px; }
+
+.admin-members { list-style: none; margin: 10px 0 0; padding: 0; }
+.admin-members li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13.5px;
+}
+.admin-members .dot {
+  width: 8px; height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: #4a5464;
+}
+.admin-members .dot.online { background: #4caf7d; }
+.admin-members .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-members .hint { margin: 0; }
+
+.admin-codes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 10px 0 0;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.admin-game .hint { margin: 6px 0 0; }
+
+.admin-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+.admin-foot span { flex: 1; min-width: 0; }
+
+button.danger {
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid rgba(217,83,79,.4);
+  border-radius: 10px;
+}
+button.danger:hover { background: rgba(217,83,79,.15); }
+
 /* ------------------------------------------------------------------ modal */
 
 .modal-backdrop {
@@ -644,10 +748,15 @@ button.small { padding: 6px 10px; font-size: 13px; }
   .composer-locked { padding: 16px 16px calc(16px + var(--safe-bottom)); }
 
   /* --- modal como hoja inferior --- */
-  .modal-backdrop { align-items: flex-end; padding: 0; }
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+    /* Se apoya sobre el teclado, no debajo. */
+    height: calc(100dvh - var(--keyboard, 0px));
+  }
   .modal {
     max-width: none;
-    max-height: 88dvh;
+    max-height: calc(88dvh - var(--keyboard, 0px));
     border-radius: 18px 18px 0 0;
     border-bottom: none;
     padding: 20px 18px calc(20px + var(--safe-bottom));
@@ -660,6 +769,14 @@ button.small { padding: 6px 10px; font-size: 13px; }
   .screen-inner.narrow > button.ghost { width: 100%; min-height: var(--tap); }
 
   .toast { left: 12px; right: 12px; bottom: calc(18px + var(--safe-bottom)); transform: none; text-align: center; }
+
+  /* --- pie, compartir y panel de administracion --- */
+  .app-footer .version { min-height: 36px; }
+  .share-link { min-height: 30px; padding: 4px 10px; }
+  .modal.admin { max-height: 90dvh; }
+  .admin-game > header { flex-wrap: wrap; }
+  .admin-foot { flex-wrap: wrap; }
+  .admin-foot button { width: 100%; min-height: 40px; }
 }
 
 /* Moviles estrechos (iPhone SE y similares). */

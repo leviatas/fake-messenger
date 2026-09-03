@@ -4,6 +4,7 @@ import {
   MAX_BODY_LENGTH,
   MAX_MESSAGES_PER_CHANNEL,
   MAX_NAME_LENGTH,
+  type AdminGame,
   type GameState,
   type PublicChannel,
   type PublicMessage,
@@ -92,7 +93,31 @@ export function getGame(gameId: string): Game {
   return game;
 }
 
+/** Todas las partidas, de la mas reciente a la mas antigua (panel de administracion). */
+export function listGames(): Game[] {
+  return [...games.values()].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Borra una partida entera: sus codigos dejan de valer y sus sesiones mueren. */
+export function deleteGame(gameId: unknown): Game {
+  const game = getGame(String(gameId ?? ''));
+  for (const code of Object.values(game.codes)) codeIndex.delete(code);
+  for (const [token, session] of sessions) {
+    if (session.gameId === game.id) sessions.delete(token);
+  }
+  games.delete(game.id);
+  schedulePersist();
+  return game;
+}
+
 // ------------------------------------------------------------------ miembros
+
+/** Cierra todas las sesiones abiertas de un miembro. */
+function dropSessionsOf(gameId: string, memberId: string): void {
+  for (const [token, session] of sessions) {
+    if (session.gameId === gameId && session.memberId === memberId) sessions.delete(token);
+  }
+}
 
 export function joinGame(rawCode: unknown, rawName: unknown): { game: Game; member: Member; token: string } {
   const entry = codeIndex.get(normalizeCode(rawCode));
@@ -101,10 +126,31 @@ export function joinGame(rawCode: unknown, rawName: unknown): { game: Game; memb
   const game = getGame(entry.gameId);
   const name = cleanName(rawName);
 
-  const taken = Object.values(game.members).some(
+  const previous = Object.values(game.members).find(
     (m) => !m.kicked && m.name.toLowerCase() === name.toLowerCase(),
   );
-  if (taken) throw new AppError('Ya hay alguien con ese nombre en la partida.', 409);
+
+  // Quien se fue puede volver con su nombre mientras no haya nadie conectado
+  // con el: recupera su sitio y con el sus chats privados.
+  if (previous) {
+    if (previous.online) throw new AppError('Ya hay alguien conectado con ese nombre.', 409);
+    if (previous.role !== entry.role) {
+      throw new AppError('Ese nombre ya lo usa alguien de la partida con otro rol.', 409);
+    }
+
+    dropSessionsOf(game.id, previous.id);
+    const resumed = makeToken();
+    sessions.set(resumed, { gameId: game.id, memberId: previous.id });
+
+    systemMessage(
+      game,
+      game.generalChannelId,
+      `${previous.name} ha vuelto a la partida.`,
+      previous.role === 'voyeur' ? ['dm', 'voyeur'] : null,
+    );
+    schedulePersist();
+    return { game, member: previous, token: resumed };
+  }
 
   if (entry.role === 'dm' && Object.values(game.members).some((m) => m.role === 'dm' && !m.kicked)) {
     throw new AppError('Esta partida ya tiene un DM.', 409);
@@ -170,9 +216,7 @@ export function kickMember(game: Game, actor: Member, targetId: unknown): Member
   target.online = false;
   target.kickedAt = now();
 
-  for (const [token, session] of sessions) {
-    if (session.gameId === game.id && session.memberId === target.id) sessions.delete(token);
-  }
+  dropSessionsOf(game.id, target.id);
   for (const channel of Object.values(game.channels)) {
     channel.memberIds = channel.memberIds.filter((id) => id !== target.id);
   }
@@ -452,6 +496,9 @@ export function projectState(game: Game, viewer: Member): GameState {
       generalChannelId: game.generalChannelId,
       // Solo el DM recibe los codigos: es quien reparte los accesos.
       ...(viewer.role === 'dm' ? { codes: { ...game.codes } } : {}),
+      // Los jugadores pueden invitar a mas jugadores con el codigo que ya
+      // usaron para entrar; los voyeristas no invitan a nadie.
+      ...(viewer.role === 'voyeur' ? {} : { inviteCode: game.codes.player }),
     },
     me: {
       id: viewer.id,
@@ -469,6 +516,35 @@ export function projectState(game: Game, viewer: Member): GameState {
     })),
     channels,
     messages,
+  };
+}
+
+export function projectAdminGame(game: Game): AdminGame {
+  const lists = Object.values(game.messages);
+  const messageCount = lists.reduce((total, list) => total + list.length, 0);
+  const lastActivity = lists.reduce(
+    (last, list) => Math.max(last, list[list.length - 1]?.ts ?? 0),
+    game.createdAt,
+  );
+
+  return {
+    id: game.id,
+    name: game.name,
+    createdAt: game.createdAt,
+    codes: { dm: game.codes.dm, player: game.codes.player, voyeur: game.codes.voyeur },
+    members: Object.values(game.members)
+      .sort((a, b) => a.joinedAt - b.joinedAt)
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        role: m.role,
+        online: m.online,
+        kicked: m.kicked,
+        joinedAt: m.joinedAt,
+      })),
+    channelCount: Object.keys(game.channels).length,
+    messageCount,
+    lastActivity,
   };
 }
 

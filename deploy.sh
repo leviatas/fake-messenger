@@ -51,6 +51,9 @@ Opciones:
   --port-base N         Empezar la busqueda de puerto libre en N (por defecto 3000).
   --password TEXTO      Contrasena para crear partidas (por defecto la del .env
                         anterior, o MeGustaElRol).
+  --admin-password T    Contrasena del modo administrador (ver y borrar
+                        partidas). Por defecto, la del .env anterior; si no
+                        hay ninguna, vale la de crear partidas.
   --tunnel-token TOKEN  Token del tunel de Cloudflare.
   --token-file RUTA     Fichero que contiene el token.
   --no-tunnel           No arrancar cloudflared aunque haya token.
@@ -71,6 +74,7 @@ HELP
 PORT_FIXED=""
 PORT_BASE="${PORT_BASE:-$PORT_BASE_DEFAULT}"
 PASSWORD_OPT=""
+ADMIN_PASSWORD_OPT=""
 TOKEN_OPT=""
 TOKEN_FILE_OPT=""
 USE_TUNNEL=1
@@ -83,6 +87,7 @@ while [[ $# -gt 0 ]]; do
     --port)          PORT_FIXED="${2:?--port necesita un numero}"; shift 2 ;;
     --port-base)     PORT_BASE="${2:?--port-base necesita un numero}"; shift 2 ;;
     --password)      PASSWORD_OPT="${2:?--password necesita un valor}"; shift 2 ;;
+    --admin-password) ADMIN_PASSWORD_OPT="${2:?--admin-password necesita un valor}"; shift 2 ;;
     --tunnel-token)  TOKEN_OPT="${2:?--tunnel-token necesita un valor}"; shift 2 ;;
     --token-file)    TOKEN_FILE_OPT="${2:?--token-file necesita una ruta}"; shift 2 ;;
     --no-tunnel)     USE_TUNNEL=0; shift ;;
@@ -141,6 +146,7 @@ env_escape() {
 
 PREVIOUS_PORT=$(env_value PORT)
 PREVIOUS_PASSWORD=$(env_value ROLEPLAY_PASSWORD)
+PREVIOUS_ADMIN_PASSWORD=$(env_value ADMIN_PASSWORD)
 PREVIOUS_TOKEN=$(env_value CLOUDFLARE_TUNNEL_TOKEN)
 
 # ------------------------------------------------------------------- puertos
@@ -330,6 +336,13 @@ if [[ -z $PASSWORD_OPT && -z $PREVIOUS_PASSWORD ]]; then
   warn "Usando la contrasena por defecto (MeGustaElRol). Cambiala con --password."
 fi
 
+# El modo administrador ve y borra todas las partidas: mejor con clave propia.
+ADMIN_PASSWORD=${ADMIN_PASSWORD_OPT:-$PREVIOUS_ADMIN_PASSWORD}
+if [[ -z $ADMIN_PASSWORD ]]; then
+  warn "Sin ADMIN_PASSWORD: el modo administrador usa la contrasena de la mesa."
+  warn "Ponle una propia con --admin-password."
+fi
+
 step "Escribiendo $ENV_FILE"
 ENV_TMP=$(mktemp "${ENV_FILE}.XXXXXX")
 trap 'rm -f "$ENV_TMP"' EXIT
@@ -342,6 +355,10 @@ trap 'rm -f "$ENV_TMP"' EXIT
   echo
   echo "# Contrasena para crear partidas."
   echo "ROLEPLAY_PASSWORD=\"$(env_escape "$PASSWORD")\""
+  echo
+  echo "# Contrasena del modo administrador (pulsando la version del pie)."
+  echo "# Vacia = vale la de crear partidas."
+  echo "ADMIN_PASSWORD=\"$(env_escape "$ADMIN_PASSWORD")\""
   if [[ -n $TUNNEL_TOKEN ]]; then
     echo
     echo "# Token del tunel de Cloudflare (servicio cloudflared)."
@@ -425,6 +442,7 @@ echo
 ok "Desplegado."
 info "Local:      http://localhost:${PORT}"
 info "Contrasena: $PASSWORD"
+info "Admin:      ${ADMIN_PASSWORD:-(la misma que para crear partidas)}"
 info "Tunel:      $TUNNEL_STATE"
 if [[ $TUNNEL_STATE != "apagado" ]] && (( ! TUNNEL_FAILED )); then
   info "            En el panel de Cloudflare, apunta el hostname a http://app:3000"

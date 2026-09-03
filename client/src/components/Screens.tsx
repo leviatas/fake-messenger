@@ -1,3 +1,5 @@
+import VersionFooter from './VersionFooter';
+
 interface KickedProps {
   onBack: () => void;
 }
@@ -11,6 +13,7 @@ export function KickedScreen({ onBack }: KickedProps) {
         <button className="primary" type="button" onClick={onBack}>
           Volver al menu
         </button>
+        <VersionFooter />
       </div>
     </main>
   );

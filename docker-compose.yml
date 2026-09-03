@@ -9,6 +9,8 @@ services:
       - "${PORT:-3000}:3000"
     environment:
       ROLEPLAY_PASSWORD: ${ROLEPLAY_PASSWORD:-MeGustaElRol}
+      # Sin valor cae en la contrasena de la mesa (ver server/src/server.ts).
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       DATA_DIR: /app/data
     volumes:
       - partidas:/app/data
@@ -59,6 +61,8 @@ services:
       - "3000:3000"
     environment:
       ROLEPLAY_PASSWORD: ${ROLEPLAY_PASSWORD:-MeGustaElRol}
+      # Sin valor cae en la contrasena de la mesa (ver server/src/server.ts).
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       DATA_DIR: /app/data
     volumes:
       - ./shared/src:/app/shared/src
