@@ -30,11 +30,32 @@ async function request<T>(method: string, url: string, body?: unknown, adminToke
 
 const post = <T>(url: string, body: unknown): Promise<T> => request<T>('POST', url, body);
 
+async function uploadAvatar(token: string, image: Blob): Promise<{ avatar: string }> {
+  const form = new FormData();
+  form.append('avatar', image, 'avatar.jpg');
+
+  let res: Response;
+  try {
+    res = await fetch('/api/avatar', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+      body: form,
+    });
+  } catch {
+    throw new Error('No se pudo contactar con el servidor.');
+  }
+
+  const data = (await res.json().catch(() => ({}))) as { error?: string; avatar?: string };
+  if (!res.ok || !data.avatar) throw new Error(data.error ?? 'Error inesperado del servidor.');
+  return { avatar: data.avatar };
+}
+
 export const api = {
   createGame: (name: string, password: string) =>
     post<CreateGameResponse>('/api/games', { name, password }),
   join: (code: string, name: string) => post<JoinResponse>('/api/join', { code, name }),
   session: (token: string) => post<SessionResponse>('/api/session', { token }),
+  uploadAvatar,
 
   // ------------------------------------------------ panel de administracion
   adminLogin: (password: string) => post<AdminLoginResponse>('/api/admin/login', { password }),

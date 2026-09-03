@@ -15,6 +15,14 @@ export const AVATAR_PRESETS = [
   '🙂', '😎', '🥳', '🤠', '🧙', '🧛', '🧝', '🐉', '🦊', '🐺', '🦉', '🐍', '🌙', '⚔️', '🔥', '🎲',
 ] as const;
 
+/** Un avatar que empieza asi es una imagen subida, no un emoji: ver isImageAvatar(). */
+export const AVATAR_IMAGE_PREFIX = '/avatars/';
+export const MAX_AVATAR_IMAGE_BYTES = 400 * 1024;
+
+export function isImageAvatar(avatar: string | null | undefined): avatar is string {
+  return !!avatar && avatar.startsWith(AVATAR_IMAGE_PREFIX);
+}
+
 export const ROLE_LABEL: Record<Role, string> = {
   dm: 'DM',
   player: 'Jugador',

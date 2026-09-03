@@ -5,6 +5,13 @@ Cada cambio la sube y anade su linea aqui, siguiendo [SemVer](https://semver.org
 la tercera cifra para arreglos, la segunda para novedades y la primera para
 cambios que rompen algo.
 
+## 1.2.0
+
+- Cada persona puede ponerse un nombre propio (unico en la partida) y un
+  avatar: un emoji o una imagen que se sube al servidor. Se ve pequeno junto
+  al nombre, en la lista de participantes y en los mensajes que se envian.
+  Se edita desde la cabecera de la partida.
+
 ## 1.1.1
 
 - La pantalla ya no da saltos al desplazarse por el chat en el movil: el alto lo

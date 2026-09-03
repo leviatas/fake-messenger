@@ -3,12 +3,15 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express, { type NextFunction, type Request, type Response } from 'express';
+import multer, { MulterError } from 'multer';
 import { WebSocket, WebSocketServer } from 'ws';
-import { ADMIN_TOKEN_HEADER, type ClientCommand, type ServerEvent } from '@rol/shared';
+import { ADMIN_TOKEN_HEADER, MAX_AVATAR_IMAGE_BYTES, type ClientCommand, type ServerEvent } from '@rol/shared';
 import * as admin from './admin.js';
 import * as store from './store.js';
 import { AppError, type Channel, type Game, type Member } from './types.js';
 import { APP_VERSION } from './version.js';
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_AVATAR_IMAGE_BYTES, files: 1 } });
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_CLIENT_DIR = path.resolve(here, '../../client/dist');
@@ -123,6 +126,30 @@ export function createServer(options: ServerOptions = {}) {
     });
   });
 
+  // Subir una imagen como avatar: la sesion viaja en la cabecera, el fichero en el cuerpo.
+  app.post(
+    '/api/avatar',
+    (req, res, next) => {
+      upload.single('avatar')(req, res, (err: unknown) => {
+        if (!err) return next();
+        if (err instanceof MulterError && err.code === 'LIMIT_FILE_SIZE') {
+          return next(new AppError(`La imagen no puede superar ${Math.round(MAX_AVATAR_IMAGE_BYTES / 1024)} KB.`));
+        }
+        next(new AppError('No se pudo procesar la imagen.'));
+      });
+    },
+    (req, res) => {
+      const header = req.get('authorization') ?? '';
+      const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+      const { game, member } = store.resumeSession(token);
+      if (!req.file) throw new AppError('Falta la imagen.');
+
+      store.saveAvatarImage(member, req.file.buffer, req.file.mimetype);
+      broadcastState(game);
+      res.json({ avatar: member.avatar });
+    },
+  );
+
   // ------------------------------------------------ panel de administracion
 
   /** Echa de la partida a quien siga conectado cuando esta desaparece. */
@@ -164,11 +191,17 @@ export function createServer(options: ServerOptions = {}) {
     res.json({ ok: true });
   });
 
+  // Imagenes de avatar subidas por quien juega.
+  app.use(
+    '/avatars',
+    express.static(store.AVATAR_DIR, { setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff') }),
+  );
+
   // ------------------------------------------------------- estaticos del SPA
 
   if (fs.existsSync(clientDir)) {
     app.use(express.static(clientDir));
-    app.get(/^\/(?!api\/|ws$).*/, (_req, res) => {
+    app.get(/^\/(?!api\/|ws$|avatars\/).*/, (_req, res) => {
       res.sendFile(path.join(clientDir, 'index.html'));
     });
   }

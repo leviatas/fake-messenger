@@ -1,7 +1,7 @@
 import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
-import type { ClientCommand, GameState, ServerEvent } from '@rol/shared';
+import { MAX_AVATAR_IMAGE_BYTES, type ClientCommand, type GameState, type ServerEvent } from '@rol/shared';
 import * as admin from '../src/admin.js';
 import { createServer } from '../src/server.js';
 import * as store from '../src/store.js';
@@ -139,6 +139,63 @@ describe('API REST', () => {
     const { token } = await join(codes.player, 'Kaelen');
     expect((await post('/api/session', { token })).status).toBe(200);
     expect((await post('/api/session', { token: 'basura' })).status).toBe(401);
+  });
+});
+
+describe('subida de avatar', () => {
+  async function uploadAs(token: string | undefined, body: Buffer, mimeType: string) {
+    const form = new FormData();
+    form.append('avatar', new Blob([body], { type: mimeType }), 'a.png');
+    return fetch(`${base}/api/avatar`, {
+      method: 'POST',
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+  }
+
+  it('exige autenticarse con el token de sesion', async () => {
+    const res = await uploadAs(undefined, Buffer.from('x'), 'image/png');
+    expect(res.status).toBe(401);
+  });
+
+  it('rechaza un token invalido', async () => {
+    const res = await uploadAs('basura', Buffer.from('x'), 'image/png');
+    expect(res.status).toBe(401);
+  });
+
+  it('rechaza un formato no admitido', async () => {
+    const codes = await newGame();
+    const { token } = await join(codes.player, 'Kaelen');
+    const res = await uploadAs(token, Buffer.from('x'), 'image/svg+xml');
+    expect(res.status).toBe(400);
+  });
+
+  it('rechaza una imagen demasiado grande', async () => {
+    const codes = await newGame();
+    const { token } = await join(codes.player, 'Kaelen');
+    const res = await uploadAs(token, Buffer.alloc(MAX_AVATAR_IMAGE_BYTES + 1), 'image/png');
+    expect(res.status).toBe(400);
+  });
+
+  it('guarda la imagen, la sirve en /avatars y avisa a los demas por el estado', async () => {
+    const codes = await newGame();
+    const { token } = await join(codes.player, 'Kaelen');
+    const dm = await join(codes.dm, 'Master');
+    const dmClient = await TestClient.connect(dm.token);
+
+    const res = await uploadAs(token, Buffer.from('contenido'), 'image/png');
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { avatar: string };
+    expect(data.avatar).toMatch(/^\/avatars\/.+\.png$/);
+
+    const file = await fetch(`${base}${data.avatar}`);
+    expect(file.status).toBe(200);
+    expect(await file.text()).toBe('contenido');
+
+    await dmClient.waitFor(
+      'state',
+      (e) => e.type === 'state' && e.members.some((m) => m.avatar === data.avatar),
+    );
   });
 });
 

@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef } from 'react';
 import type { PublicMessage, Viewer } from '@rol/shared';
-import { avatarOf, formatDay, formatTime } from '../lib/format';
+import { formatDay, formatTime } from '../lib/format';
+import Avatar from './Avatar';
 
 interface Props {
   channelId: string;
@@ -73,7 +74,6 @@ export default function MessageList({ channelId, messages, me, onDelete }: Props
         const grouped = previousAuthor === message.authorId && !dayChanged;
         previousAuthor = message.authorId;
         const canDelete = !message.deleted && (own || me.role === 'dm');
-        const avatar = own ? avatarOf(me.name, me.avatar) : avatarOf(message.authorName ?? '?', message.authorAvatar);
 
         return (
           <Fragment key={message.id}>
@@ -89,7 +89,13 @@ export default function MessageList({ channelId, messages, me, onDelete }: Props
                 .join(' ')}
             >
               {!grouped ? (
-                <span className="msg-avatar">{avatar}</span>
+                <span className="msg-avatar">
+                  {own ? (
+                    <Avatar name={me.name} avatar={me.avatar} />
+                  ) : (
+                    <Avatar name={message.authorName ?? '?'} avatar={message.authorAvatar} />
+                  )}
+                </span>
               ) : (
                 <span className="msg-avatar spacer" />
               )}

@@ -193,6 +193,7 @@ button.small { padding: 6px 10px; font-size: 13px; }
   flex: none;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border-radius: 50%;
   background: var(--panel-2);
   border: none;
@@ -200,6 +201,7 @@ button.small { padding: 6px 10px; font-size: 13px; }
   line-height: 1;
 }
 .me-avatar:hover { background: var(--panel); }
+.me-avatar.big { width: 56px; height: 56px; font-size: 26px; }
 .sidebar-id { flex: 1; min-width: 0; }
 .game-name {
   margin: 0;
@@ -334,6 +336,7 @@ button.small { padding: 6px 10px; font-size: 13px; }
   flex: none;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border-radius: 50%;
   background: var(--panel-2);
   font-size: 12px;
@@ -442,6 +445,7 @@ button.small { padding: 6px 10px; font-size: 13px; }
   flex: none;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border-radius: 50%;
   background: var(--panel-2);
   font-size: 13px;
@@ -738,6 +742,20 @@ button.danger:hover { background: rgba(217,83,79,.15); }
 }
 .avatar-option:hover { background: var(--panel); }
 .avatar-option.selected { border-color: var(--accent); background: rgba(255,255,255,.06); }
+
+.me-avatar img, .person-avatar img, .msg-avatar img, .avatar-option img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+}
+.profile-avatar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .toast {
   position: fixed;

@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  AVATAR_IMAGE_PREFIX,
+  isImageAvatar,
   MAX_AVATAR_LENGTH,
   MAX_BODY_LENGTH,
   MAX_MESSAGES_PER_CHANNEL,
@@ -17,6 +19,16 @@ import { AppError, type Channel, type Game, type Member, type Message, type Sess
 const DATA_DIR = process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
 const DATA_FILE = path.join(DATA_DIR, 'games.json');
 const PERSIST_ENABLED = process.env.PERSIST !== '0';
+
+/** Carpeta donde se guardan las imagenes de avatar subidas; se sirve tal cual en /avatars. */
+export const AVATAR_DIR = path.join(DATA_DIR, 'avatars');
+
+const AVATAR_MIME_EXT: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
 
 const games = new Map<string, Game>();
 /** codigo -> partida y rol al que da acceso */
@@ -243,8 +255,40 @@ export function kickMember(game: Game, actor: Member, targetId: unknown): Member
   return target;
 }
 
+function avatarFilePath(url: string): string {
+  return path.join(AVATAR_DIR, url.slice(AVATAR_IMAGE_PREFIX.length));
+}
+
+/** Borra el fichero de una imagen de avatar que deja de estar en uso. */
+function discardAvatarImage(avatar: string | null): void {
+  if (!isImageAvatar(avatar)) return;
+  try {
+    fs.unlinkSync(avatarFilePath(avatar));
+  } catch {
+    /* ya no estaba, no pasa nada */
+  }
+}
+
 export function setAvatar(game: Game, member: Member, rawAvatar: unknown): Member {
+  const previous = member.avatar;
   member.avatar = cleanAvatar(rawAvatar);
+  discardAvatarImage(previous);
+  schedulePersist();
+  return member;
+}
+
+/** Guarda la imagen subida como avatar y sustituye la anterior si la habia. */
+export function saveAvatarImage(member: Member, buffer: Buffer, mimeType: string): Member {
+  const ext = AVATAR_MIME_EXT[mimeType];
+  if (!ext) throw new AppError('Solo se admiten imagenes PNG, JPEG, WEBP o GIF.');
+
+  fs.mkdirSync(AVATAR_DIR, { recursive: true });
+  const fileName = `${member.id}-${makeId('av')}.${ext}`;
+  fs.writeFileSync(path.join(AVATAR_DIR, fileName), buffer);
+
+  const previous = member.avatar;
+  member.avatar = `${AVATAR_IMAGE_PREFIX}${fileName}`;
+  discardAvatarImage(previous);
   schedulePersist();
   return member;
 }

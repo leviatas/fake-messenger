@@ -66,6 +66,7 @@ export default function App() {
       <GameView
         state={state}
         send={send}
+        token={token}
         onSelectChannel={selectChannel}
         onBack={goBack}
         onDismissError={() => setError(null)}

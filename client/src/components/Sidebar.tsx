@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ROLE_LABEL, type GameCodes, type GameState, type PublicChannel, type PublicMember } from '@rol/shared';
 import type { Connection } from '../lib/useGame';
-import { avatarOf, channelIcon } from '../lib/format';
+import { channelIcon } from '../lib/format';
+import Avatar from './Avatar';
 import CodeList from './CodeList';
 import ProfileEditor from './ProfileEditor';
 import ShareModal from './ShareModal';
@@ -14,11 +15,12 @@ interface Props {
   connection: Connection;
   activeChannelId: string | null;
   unread: Record<string, number>;
+  token: string;
   onSelectChannel: (channelId: string) => void;
   onNewChat: (kind: 'direct' | 'group') => void;
   onKick: (member: PublicMember) => void;
   onLeave: () => void;
-  onSaveProfile: (input: { name: string; avatar: string }) => void;
+  onSaveProfile: (input: { name: string; avatar?: string }) => void;
 }
 
 function previewOf(game: GameState, channel: PublicChannel): string {
@@ -35,6 +37,7 @@ export default function Sidebar({
   connection,
   activeChannelId,
   unread,
+  token,
   onSelectChannel,
   onNewChat,
   onKick,
@@ -58,7 +61,9 @@ export default function Sidebar({
   const renderPerson = (member: PublicMember) => (
     <li key={member.id} className="person">
       <span className={`dot ${member.online ? 'online' : ''}`} title={member.online ? 'En linea' : 'Desconectado'} />
-      <span className="person-avatar">{avatarOf(member.name, member.avatar)}</span>
+      <span className="person-avatar">
+        <Avatar name={member.name} avatar={member.avatar} />
+      </span>
       <span className="name">
         {member.name}
         {member.id === game.me.id && ' (tu)'}
@@ -84,7 +89,7 @@ export default function Sidebar({
               onClick={() => setEditingProfile(true)}
               title="Editar tu nombre y tu avatar"
             >
-              {avatarOf(game.me.name, game.me.avatar)}
+              <Avatar name={game.me.name} avatar={game.me.avatar} />
             </button>
             <button
               type="button"
@@ -201,6 +206,7 @@ export default function Sidebar({
         <ProfileEditor
           currentName={game.me.name}
           currentAvatar={game.me.avatar}
+          token={token}
           onCancel={() => setEditingProfile(false)}
           onSave={(input) => {
             onSaveProfile(input);
