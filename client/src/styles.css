@@ -441,14 +441,14 @@ button.small { padding: 6px 10px; font-size: 13px; }
 .msg.grouped { margin-top: 1px; }
 
 .msg-avatar {
-  width: 78px; height: 78px;
+  width: 234px; height: 234px;
   flex: none;
   display: grid;
   place-items: center;
   overflow: hidden;
   border-radius: 50%;
   background: var(--panel-2);
-  font-size: 39px;
+  font-size: 117px;
   line-height: 1;
 }
 .msg-avatar.spacer { visibility: hidden; }
@@ -829,6 +829,8 @@ button.danger:hover { background: rgba(217,83,79,.15); }
   .messages { padding: 14px 12px 6px; }
   .msg { max-width: 85%; }
   .msg .bubble { padding: 8px 11px; }
+  /* A tamano completo el avatar no deja sitio para el texto en pantallas estrechas. */
+  .msg-avatar { width: 96px; height: 96px; font-size: 48px; }
   .typing { padding: 0 14px; }
   .composer {
     gap: 8px;

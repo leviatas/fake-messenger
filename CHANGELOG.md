@@ -5,6 +5,12 @@ Cada cambio la sube y anade su linea aqui, siguiendo [SemVer](https://semver.org
 la tercera cifra para arreglos, la segunda para novedades y la primera para
 cambios que rompen algo.
 
+## 1.2.2
+
+- El avatar de los mensajes se ve otras tres veces mas grande (unas nueve
+  veces el tamano original). En pantallas estrechas se queda algo mas
+  pequeno para no dejar el texto sin sitio.
+
 ## 1.2.1
 
 - Salir de la partida pide confirmacion antes de echar a quien pulsa el boton.
