@@ -226,6 +226,7 @@ server/    Express + ws, estado de las partidas y reglas de visibilidad
   test/           tests de Vitest
 client/    React + Vite
   src/lib/useGame.ts   conexion WebSocket, reconexion y estado del chat
+  src/lib/useViewportHeight.ts  alto real de la ventana (teclado del movil)
   src/components/      menu, codigos, barra lateral, conversacion, modales
 ```
 
