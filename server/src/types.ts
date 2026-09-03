@@ -8,6 +8,7 @@ export interface Member {
   online: boolean;
   kicked: boolean;
   kickedAt?: number;
+  avatar: string | null;
 }
 
 export interface Channel {
@@ -25,6 +26,8 @@ export interface Message {
   authorId: string | null;
   authorName: string | null;
   authorRole: Role | null;
+  /** Avatar del autor en el momento de escribir, aunque luego lo cambie. */
+  authorAvatar: string | null;
   body: string;
   ts: number;
   system: boolean;

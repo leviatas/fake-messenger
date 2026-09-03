@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { ROLE_LABEL, type GameCodes, type GameState, type PublicChannel, type PublicMember } from '@rol/shared';
 import type { Connection } from '../lib/useGame';
-import { channelIcon } from '../lib/format';
+import { avatarOf, channelIcon } from '../lib/format';
 import CodeList from './CodeList';
+import ProfileEditor from './ProfileEditor';
 import ShareModal from './ShareModal';
 import VersionFooter from './VersionFooter';
 
@@ -17,6 +18,7 @@ interface Props {
   onNewChat: (kind: 'direct' | 'group') => void;
   onKick: (member: PublicMember) => void;
   onLeave: () => void;
+  onSaveProfile: (input: { name: string; avatar: string }) => void;
 }
 
 function previewOf(game: GameState, channel: PublicChannel): string {
@@ -37,9 +39,11 @@ export default function Sidebar({
   onNewChat,
   onKick,
   onLeave,
+  onSaveProfile,
 }: Props) {
   const [tab, setTab] = useState<Tab>('chats');
   const [sharing, setSharing] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const isDm = game.me.role === 'dm';
 
   // El DM reparte los tres roles; un jugador solo puede invitar a jugadores.
@@ -54,6 +58,7 @@ export default function Sidebar({
   const renderPerson = (member: PublicMember) => (
     <li key={member.id} className="person">
       <span className={`dot ${member.online ? 'online' : ''}`} title={member.online ? 'En linea' : 'Desconectado'} />
+      <span className="person-avatar">{avatarOf(member.name, member.avatar)}</span>
       <span className="name">
         {member.name}
         {member.id === game.me.id && ' (tu)'}
@@ -73,7 +78,22 @@ export default function Sidebar({
         <div className="sidebar-id">
           <h1 className="game-name">{game.game.name}</h1>
           <p className="me-line">
-            <span className="me-name">{game.me.name}</span>
+            <button
+              type="button"
+              className="me-avatar"
+              onClick={() => setEditingProfile(true)}
+              title="Editar tu nombre y tu avatar"
+            >
+              {avatarOf(game.me.name, game.me.avatar)}
+            </button>
+            <button
+              type="button"
+              className="me-name"
+              onClick={() => setEditingProfile(true)}
+              title="Editar tu nombre y tu avatar"
+            >
+              {game.me.name}
+            </button>
             <span className={`badge ${game.me.role}`}>{ROLE_LABEL[game.me.role]}</span>
             {canShare && (
               <button type="button" className="share-link" onClick={() => setSharing(true)}>
@@ -175,6 +195,18 @@ export default function Sidebar({
 
       {sharing && (
         <ShareModal gameName={game.game.name} codes={shareCodes} onClose={() => setSharing(false)} />
+      )}
+
+      {editingProfile && (
+        <ProfileEditor
+          currentName={game.me.name}
+          currentAvatar={game.me.avatar}
+          onCancel={() => setEditingProfile(false)}
+          onSave={(input) => {
+            onSaveProfile(input);
+            setEditingProfile(false);
+          }}
+        />
       )}
     </aside>
   );

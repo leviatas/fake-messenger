@@ -59,6 +59,10 @@ export default function GameView({
         onNewChat={setModal}
         onKick={handleKick}
         onLeave={onLeave}
+        onSaveProfile={({ name, avatar }) => {
+          if (name !== game.me.name) send({ type: 'member:name', name });
+          if (avatar !== (game.me.avatar ?? '')) send({ type: 'member:avatar', avatar });
+        }}
       />
 
       <Conversation

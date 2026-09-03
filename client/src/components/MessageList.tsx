@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef } from 'react';
 import type { PublicMessage, Viewer } from '@rol/shared';
-import { formatDay, formatTime } from '../lib/format';
+import { avatarOf, formatDay, formatTime } from '../lib/format';
 
 interface Props {
   channelId: string;
@@ -73,6 +73,7 @@ export default function MessageList({ channelId, messages, me, onDelete }: Props
         const grouped = previousAuthor === message.authorId && !dayChanged;
         previousAuthor = message.authorId;
         const canDelete = !message.deleted && (own || me.role === 'dm');
+        const avatar = own ? avatarOf(me.name, me.avatar) : avatarOf(message.authorName ?? '?', message.authorAvatar);
 
         return (
           <Fragment key={message.id}>
@@ -87,23 +88,30 @@ export default function MessageList({ channelId, messages, me, onDelete }: Props
                 .filter(Boolean)
                 .join(' ')}
             >
-              <div className="bubble">
-                {!own && !grouped && (
-                  <span className={`author ${message.authorRole ?? ''}`}>{message.authorName}</span>
-                )}
-                {message.deleted
-                  ? message.deletedBy === 'dm'
-                    ? 'Mensaje eliminado por el DM'
-                    : 'Mensaje eliminado'
-                  : message.body}
-              </div>
-              <div className="meta">
-                <span>{formatTime(message.ts)}</span>
-                {canDelete && (
-                  <button type="button" className="del" onClick={() => onDelete(message)}>
-                    Borrar
-                  </button>
-                )}
+              {!grouped ? (
+                <span className="msg-avatar">{avatar}</span>
+              ) : (
+                <span className="msg-avatar spacer" />
+              )}
+              <div className="msg-content">
+                <div className="bubble">
+                  {!own && !grouped && (
+                    <span className={`author ${message.authorRole ?? ''}`}>{message.authorName}</span>
+                  )}
+                  {message.deleted
+                    ? message.deletedBy === 'dm'
+                      ? 'Mensaje eliminado por el DM'
+                      : 'Mensaje eliminado'
+                    : message.body}
+                </div>
+                <div className="meta">
+                  <span>{formatTime(message.ts)}</span>
+                  {canDelete && (
+                    <button type="button" className="del" onClick={() => onDelete(message)}>
+                      Borrar
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </Fragment>

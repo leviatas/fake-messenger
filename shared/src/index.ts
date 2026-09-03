@@ -8,6 +8,12 @@ export type ChannelType = 'general' | 'group' | 'direct';
 export const MAX_NAME_LENGTH = 32;
 export const MAX_BODY_LENGTH = 2000;
 export const MAX_MESSAGES_PER_CHANNEL = 1000;
+export const MAX_AVATAR_LENGTH = 8;
+
+/** Emojis de ejemplo para el selector de avatar; se puede escribir cualquier otro. */
+export const AVATAR_PRESETS = [
+  '🙂', '😎', '🥳', '🤠', '🧙', '🧛', '🧝', '🐉', '🦊', '🐺', '🦉', '🐍', '🌙', '⚔️', '🔥', '🎲',
+] as const;
 
 export const ROLE_LABEL: Record<Role, string> = {
   dm: 'DM',
@@ -23,6 +29,7 @@ export interface PublicMember {
   role: Role;
   online: boolean;
   joinedAt: number;
+  avatar: string | null;
 }
 
 export interface PublicChannel {
@@ -47,6 +54,7 @@ export interface PublicMessage {
   authorId: string | null;
   authorName: string | null;
   authorRole: Role | null;
+  authorAvatar: string | null;
   body: string;
   ts: number;
   system: boolean;
@@ -81,6 +89,7 @@ export interface Viewer {
   role: Role;
   canCreateChannels: boolean;
   canKick: boolean;
+  avatar: string | null;
 }
 
 export interface GameState {
@@ -127,6 +136,8 @@ export type ClientCommand =
   | { type: 'ping' }
   | { type: 'message:send'; channelId: string; body: string }
   | { type: 'message:delete'; messageId: string }
+  | { type: 'member:avatar'; avatar: string }
+  | { type: 'member:name'; name: string }
   | { type: 'channel:create'; kind: 'direct' | 'group'; name?: string; memberIds: string[] }
   | { type: 'member:kick'; memberId: string }
   | { type: 'typing'; channelId: string; on: boolean }

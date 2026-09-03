@@ -286,6 +286,60 @@ describe('mensajes', () => {
   });
 });
 
+describe('perfil', () => {
+  it('pone y quita el avatar', () => {
+    const { game, join } = setup();
+    const kaelen = join('player', 'Kaelen');
+
+    store.setAvatar(game, kaelen, ' 🧙 ');
+    expect(kaelen.avatar).toBe('🧙');
+
+    store.setAvatar(game, kaelen, '  ');
+    expect(kaelen.avatar).toBeNull();
+  });
+
+  it('rechaza un avatar demasiado largo', () => {
+    const { game, join } = setup();
+    const kaelen = join('player', 'Kaelen');
+    expect(() => store.setAvatar(game, kaelen, 'x'.repeat(9))).toThrow(/avatar/i);
+  });
+
+  it('un mensaje conserva el avatar de cuando se escribio, aunque luego cambie', () => {
+    const { game, join } = setup();
+    const kaelen = join('player', 'Kaelen');
+    store.setAvatar(game, kaelen, '🧙');
+
+    const { message } = store.postMessage(game, kaelen, game.generalChannelId, 'hola');
+    expect(message.authorAvatar).toBe('🧙');
+
+    store.setAvatar(game, kaelen, '🐺');
+    expect(message.authorAvatar).toBe('🧙');
+  });
+
+  it('cambia el nombre si esta libre', () => {
+    const { game, join } = setup();
+    const kaelen = join('player', 'Kaelen');
+    store.renameMember(game, kaelen, ' Kael ');
+    expect(kaelen.name).toBe('Kael');
+  });
+
+  it('no permite dos nombres iguales a la vez, ignorando mayusculas', () => {
+    const { game, join } = setup();
+    const kaelen = join('player', 'Kaelen');
+    join('player', 'Brissa');
+    expect(() => store.renameMember(game, kaelen, 'brissa')).toThrow(/ya lo usa alguien/i);
+  });
+
+  it('deja recuperar el nombre de alguien expulsado', () => {
+    const { game, join } = setup();
+    const dm = join('dm', 'Master');
+    const kaelen = join('player', 'Kaelen');
+    const brissa = join('player', 'Brissa');
+    store.kickMember(game, dm, brissa.id);
+    expect(() => store.renameMember(game, kaelen, 'Brissa')).not.toThrow();
+  });
+});
+
 describe('expulsiones', () => {
   it('el DM expulsa y la sesion deja de valer', () => {
     const game = store.createGame('Partida');

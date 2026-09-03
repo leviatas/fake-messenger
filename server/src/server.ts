@@ -283,6 +283,18 @@ export function createServer(options: ServerOptions = {}) {
         return;
       }
 
+      case 'member:avatar': {
+        store.setAvatar(game, member, command.avatar);
+        broadcastState(game);
+        return;
+      }
+
+      case 'member:name': {
+        store.renameMember(game, member, command.name);
+        broadcastState(game);
+        return;
+      }
+
       case 'member:kick': {
         const target = store.kickMember(game, member, command.memberId);
         for (const client of [...room(game.id)]) {
