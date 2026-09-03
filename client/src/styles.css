@@ -38,13 +38,6 @@ body { overflow: hidden; overscroll-behavior: none; }
 
 button, a { -webkit-tap-highlight-color: transparent; }
 
-/* dvh sigue a las barras del navegador movil; vh es el respaldo. */
-.view {
-  height: 100vh;
-  height: 100dvh;
-  /* Lo pone useViewportHeight: sigue al teclado virtual del movil. */
-  height: var(--app-vh, 100dvh);
-}
 
 button { font: inherit; cursor: pointer; }
 input, textarea { font: inherit; }
@@ -55,8 +48,8 @@ input, textarea { font: inherit; }
 
 .screen {
   height: 100vh;
-  height: 100dvh;
-  height: var(--app-vh, 100dvh);
+  /* dvh sigue a la barra del navegador; --keyboard lo pone useViewportHeight. */
+  height: calc(100dvh - var(--keyboard, 0px));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -175,8 +168,8 @@ button.small { padding: 6px 10px; font-size: 13px; }
 .app {
   display: flex;
   height: 100vh;
-  height: 100dvh;
-  height: var(--app-vh, 100dvh);
+  /* dvh sigue a la barra del navegador; --keyboard lo pone useViewportHeight. */
+  height: calc(100dvh - var(--keyboard, 0px));
 }
 
 .sidebar {
@@ -755,10 +748,15 @@ button.danger:hover { background: rgba(217,83,79,.15); }
   .composer-locked { padding: 16px 16px calc(16px + var(--safe-bottom)); }
 
   /* --- modal como hoja inferior --- */
-  .modal-backdrop { align-items: flex-end; padding: 0; }
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+    /* Se apoya sobre el teclado, no debajo. */
+    height: calc(100dvh - var(--keyboard, 0px));
+  }
   .modal {
     max-width: none;
-    max-height: 88dvh;
+    max-height: calc(88dvh - var(--keyboard, 0px));
     border-radius: 18px 18px 0 0;
     border-bottom: none;
     padding: 20px 18px calc(20px + var(--safe-bottom));

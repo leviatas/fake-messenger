@@ -5,6 +5,15 @@ Cada cambio la sube y anade su linea aqui, siguiendo [SemVer](https://semver.org
 la tercera cifra para arreglos, la segunda para novedades y la primera para
 cambios que rompen algo.
 
+## 1.1.1
+
+- La pantalla ya no da saltos al desplazarse por el chat en el movil: el alto lo
+  resuelve `100dvh`, que sigue a la barra del navegador sin sobresaltos, y solo
+  se descuenta el teclado cuando de verdad esta abierto.
+- Las hojas inferiores (nuevo chat, compartir, modo administrador) se apoyan
+  sobre el teclado en lugar de quedar debajo: sus campos y botones siguen
+  siendo alcanzables mientras se escribe.
+
 ## 1.1.0
 
 - El pie de la app enseña la version (`v1.1.0`) en el menu, en la pantalla de
