@@ -3,6 +3,7 @@ import type { CreateGameResponse, JoinResponse } from '@rol/shared';
 import { api } from './lib/api';
 import { clearSession, loadSession, saveSession } from './lib/session';
 import { useGame } from './lib/useGame';
+import { useViewportHeight } from './lib/useViewportHeight';
 import CodesScreen from './components/CodesScreen';
 import GameView from './components/GameView';
 import MainMenu from './components/MainMenu';
@@ -15,6 +16,9 @@ export default function App() {
   const [prefillCode, setPrefillCode] = useState('');
 
   const { state, send, selectChannel, goBack, setError } = useGame(token);
+
+  // El alto real de la ventana, teclado virtual incluido.
+  useViewportHeight();
 
   // Al abrir la app intentamos recuperar la sesion guardada.
   useEffect(() => {

@@ -62,7 +62,7 @@ export default function Sidebar({
   return (
     <aside className="sidebar">
       <header className="sidebar-head">
-        <div>
+        <div className="sidebar-id">
           <h1 className="game-name">{game.game.name}</h1>
           <p className="me-line">
             {game.me.name} <span className={`badge ${game.me.role}`}>{ROLE_LABEL[game.me.role]}</span>

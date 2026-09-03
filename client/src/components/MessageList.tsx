@@ -23,6 +23,17 @@ export default function MessageList({ channelId, messages, me, onDelete }: Props
     if (stuckToBottom.current) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Cuando el teclado virtual encoge la ventana, seguimos viendo el final.
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const onResize = () => {
+      if (stuckToBottom.current) bottomRef.current?.scrollIntoView();
+    };
+    viewport.addEventListener('resize', onResize);
+    return () => viewport.removeEventListener('resize', onResize);
+  }, []);
+
   function handleScroll() {
     const box = boxRef.current;
     if (!box) return;
