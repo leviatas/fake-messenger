@@ -8,6 +8,7 @@ import Sidebar from './Sidebar';
 interface Props {
   state: ChatState;
   send: (command: ClientCommand) => boolean;
+  token: string;
   onSelectChannel: (channelId: string) => void;
   onBack: () => void;
   onDismissError: () => void;
@@ -17,6 +18,7 @@ interface Props {
 export default function GameView({
   state,
   send,
+  token,
   onSelectChannel,
   onBack,
   onDismissError,
@@ -55,13 +57,14 @@ export default function GameView({
         connection={state.connection}
         activeChannelId={state.activeChannelId}
         unread={state.unread}
+        token={token}
         onSelectChannel={onSelectChannel}
         onNewChat={setModal}
         onKick={handleKick}
         onLeave={onLeave}
         onSaveProfile={({ name, avatar }) => {
           if (name !== game.me.name) send({ type: 'member:name', name });
-          if (avatar !== (game.me.avatar ?? '')) send({ type: 'member:avatar', avatar });
+          if (avatar !== undefined && avatar !== (game.me.avatar ?? '')) send({ type: 'member:avatar', avatar });
         }}
       />
 

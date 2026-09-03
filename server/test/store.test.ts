@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as store from '../src/store.js';
 import { AppError, type Game, type Member } from '../src/types.js';
@@ -302,6 +304,40 @@ describe('perfil', () => {
     const { game, join } = setup();
     const kaelen = join('player', 'Kaelen');
     expect(() => store.setAvatar(game, kaelen, 'x'.repeat(9))).toThrow(/avatar/i);
+  });
+
+  it('guarda una imagen subida como avatar y sirve su fichero', () => {
+    const { join } = setup();
+    const kaelen = join('player', 'Kaelen');
+
+    store.saveAvatarImage(kaelen, Buffer.from('contenido-falso'), 'image/png');
+    expect(kaelen.avatar).toMatch(/^\/avatars\/.+\.png$/);
+    const filePath = path.join(store.AVATAR_DIR, kaelen.avatar!.replace('/avatars/', ''));
+    expect(fs.readFileSync(filePath, 'utf8')).toBe('contenido-falso');
+  });
+
+  it('rechaza un formato de imagen no admitido', () => {
+    const { join } = setup();
+    const kaelen = join('player', 'Kaelen');
+    expect(() => store.saveAvatarImage(kaelen, Buffer.from('x'), 'image/svg+xml')).toThrow(/solo se admiten/i);
+  });
+
+  it('borra el fichero anterior al subir otra imagen o volver a un emoji', () => {
+    const { game, join } = setup();
+    const kaelen = join('player', 'Kaelen');
+
+    store.saveAvatarImage(kaelen, Buffer.from('primera'), 'image/png');
+    const firstPath = path.join(store.AVATAR_DIR, kaelen.avatar!.replace('/avatars/', ''));
+    expect(fs.existsSync(firstPath)).toBe(true);
+
+    store.saveAvatarImage(kaelen, Buffer.from('segunda'), 'image/png');
+    expect(fs.existsSync(firstPath)).toBe(false);
+    const secondPath = path.join(store.AVATAR_DIR, kaelen.avatar!.replace('/avatars/', ''));
+    expect(fs.existsSync(secondPath)).toBe(true);
+
+    store.setAvatar(game, kaelen, '🧙');
+    expect(fs.existsSync(secondPath)).toBe(false);
+    expect(kaelen.avatar).toBe('🧙');
   });
 
   it('un mensaje conserva el avatar de cuando se escribio, aunque luego cambie', () => {
