@@ -20,3 +20,8 @@ export function channelIcon(channel: PublicChannel): string {
   if (channel.type === 'group') return '👥';
   return '💬';
 }
+
+/** El avatar puesto, o si no hay ninguno la inicial del nombre. */
+export function avatarOf(name: string, avatar: string | null): string {
+  return avatar ?? (name.trim().charAt(0).toUpperCase() || '?');
+}

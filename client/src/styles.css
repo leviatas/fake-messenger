@@ -188,6 +188,18 @@ button.small { padding: 6px 10px; font-size: 13px; }
   padding: 14px 16px;
   border-bottom: 1px solid var(--line);
 }
+.me-avatar {
+  width: 18px; height: 18px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: none;
+  font-size: 11px;
+  line-height: 1;
+}
+.me-avatar:hover { background: var(--panel); }
 .sidebar-id { flex: 1; min-width: 0; }
 .game-name {
   margin: 0;
@@ -205,7 +217,18 @@ button.small { padding: 6px 10px; font-size: 13px; }
   gap: 6px;
   min-width: 0;
 }
-.me-line .me-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-line .me-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
 .me-line .badge { flex: none; }
 
 .conn {
@@ -306,6 +329,16 @@ button.small { padding: 6px 10px; font-size: 13px; }
   border-radius: 10px;
 }
 .person:hover { background: var(--panel); }
+.person-avatar {
+  width: 22px; height: 22px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--panel-2);
+  font-size: 12px;
+  line-height: 1;
+}
 .person .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .person .dot {
   width: 8px; height: 8px;
@@ -393,10 +426,29 @@ button.small { padding: 6px 10px; font-size: 13px; }
   font-size: 14px;
 }
 
-.msg { max-width: min(76%, 620px); align-self: flex-start; }
-.msg.own { align-self: flex-end; }
+.msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: min(76%, 620px);
+  align-self: flex-start;
+}
+.msg.own { align-self: flex-end; flex-direction: row-reverse; }
 .msg + .msg { margin-top: 6px; }
 .msg.grouped { margin-top: 1px; }
+
+.msg-avatar {
+  width: 26px; height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--panel-2);
+  font-size: 13px;
+  line-height: 1;
+}
+.msg-avatar.spacer { visibility: hidden; }
+.msg-content { min-width: 0; }
 
 .msg .bubble {
   padding: 8px 12px;
@@ -665,6 +717,27 @@ button.danger:hover { background: rgba(217,83,79,.15); }
   accent-color: var(--accent);
 }
 .picker label:hover { background: var(--panel-2); }
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 8px;
+  list-style: none;
+  margin: 10px 0;
+  padding: 0;
+}
+.avatar-option {
+  width: 42px; height: 42px;
+  display: grid;
+  place-items: center;
+  background: var(--panel-2);
+  border: 1px solid transparent;
+  border-radius: 50%;
+  font-size: 19px;
+  line-height: 1;
+}
+.avatar-option:hover { background: var(--panel); }
+.avatar-option.selected { border-color: var(--accent); background: rgba(255,255,255,.06); }
 
 .toast {
   position: fixed;

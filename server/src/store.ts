@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+  MAX_AVATAR_LENGTH,
   MAX_BODY_LENGTH,
   MAX_MESSAGES_PER_CHANNEL,
   MAX_NAME_LENGTH,
@@ -36,6 +37,16 @@ export function cleanName(raw: unknown, what = 'nombre'): string {
 
 function normalizeCode(raw: unknown): string {
   return String(raw ?? '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+/** Un avatar vacio quita el que hubiera puesto. */
+export function cleanAvatar(raw: unknown): string | null {
+  const avatar = String(raw ?? '').trim();
+  if (!avatar) return null;
+  if ([...avatar].length > MAX_AVATAR_LENGTH) {
+    throw new AppError(`El avatar no puede superar ${MAX_AVATAR_LENGTH} caracteres.`);
+  }
+  return avatar;
 }
 
 const now = (): number => Date.now();
@@ -163,6 +174,7 @@ export function joinGame(rawCode: unknown, rawName: unknown): { game: Game; memb
     joinedAt: now(),
     online: false,
     kicked: false,
+    avatar: null,
   };
   game.members[member.id] = member;
 
@@ -229,6 +241,34 @@ export function kickMember(game: Game, actor: Member, targetId: unknown): Member
   );
   schedulePersist();
   return target;
+}
+
+export function setAvatar(game: Game, member: Member, rawAvatar: unknown): Member {
+  member.avatar = cleanAvatar(rawAvatar);
+  schedulePersist();
+  return member;
+}
+
+/** El nombre puede cambiar, pero siempre debe ser unico entre quienes siguen en la partida. */
+export function renameMember(game: Game, member: Member, rawName: unknown): Member {
+  const name = cleanName(rawName);
+  if (name === member.name) return member;
+
+  const taken = Object.values(game.members).some(
+    (m) => m.id !== member.id && !m.kicked && m.name.toLowerCase() === name.toLowerCase(),
+  );
+  if (taken) throw new AppError('Ese nombre ya lo usa alguien de la partida.', 409);
+
+  const previousName = member.name;
+  member.name = name;
+  systemMessage(
+    game,
+    game.generalChannelId,
+    `${previousName} ahora se llama ${name}.`,
+    member.role === 'voyeur' ? ['dm', 'voyeur'] : null,
+  );
+  schedulePersist();
+  return member;
 }
 
 // ------------------------------------------------------------------- canales
@@ -345,6 +385,7 @@ export function systemMessage(
     authorId: null,
     authorName: null,
     authorRole: null,
+    authorAvatar: null,
     body,
     ts: now(),
     system: true,
@@ -383,6 +424,7 @@ export function postMessage(
     authorId: author.id,
     authorName: author.name,
     authorRole: author.role,
+    authorAvatar: author.avatar,
     body,
     ts: now(),
     system: false,
@@ -461,6 +503,7 @@ export function projectMessage(message: Message): PublicMessage {
     authorId: message.authorId,
     authorName: message.authorName,
     authorRole: message.authorRole,
+    authorAvatar: message.authorAvatar,
     body: message.deleted ? '' : message.body,
     ts: message.ts,
     system: message.system,
@@ -506,6 +549,7 @@ export function projectState(game: Game, viewer: Member): GameState {
       role: viewer.role,
       canCreateChannels: viewer.role !== 'voyeur',
       canKick: viewer.role === 'dm',
+      avatar: viewer.avatar,
     },
     members: visibleMembers(game, viewer).map((m) => ({
       id: m.id,
@@ -513,6 +557,7 @@ export function projectState(game: Game, viewer: Member): GameState {
       role: m.role,
       online: m.online,
       joinedAt: m.joinedAt,
+      avatar: m.avatar,
     })),
     channels,
     messages,
@@ -591,7 +636,13 @@ export function loadFromDisk(): void {
       sessions?: (Session & { token: string })[];
     };
     for (const game of snapshot.games ?? []) {
-      for (const member of Object.values(game.members)) member.online = false;
+      for (const member of Object.values(game.members)) {
+        member.online = false;
+        member.avatar ??= null;
+      }
+      for (const list of Object.values(game.messages)) {
+        for (const message of list) message.authorAvatar ??= null;
+      }
       games.set(game.id, game);
       for (const role of Object.keys(game.codes) as Role[]) {
         codeIndex.set(game.codes[role], { gameId: game.id, role });
