@@ -66,6 +66,17 @@ variables `CLOUDFLARE_TUNNEL_TOKEN` / `TUNNEL_TOKEN` / `CLOUDFLARED_TOKEN`, el
 ./deploy.sh --help                         # todas las opciones
 ```
 
+### Despliegue automatico desde GitHub
+
+`.github/workflows/deploy.yml` despliega en cada push a `main` (y a mano con
+*Run workflow*). Corre sobre un runner **self-hosted**: entra en la copia del
+repo que hay en el servidor, hace `git pull` y ejecuta `./deploy.sh`.
+
+La ruta por defecto es `~/proyectos/rol/fake-messenger`. Para otra, define la
+variable `DEPLOY_DIR` en GitHub (Settings → Secrets and variables → Actions →
+Variables). Si ahi no hay un repo git, el workflow falla con un aviso en vez de
+desplegar a ciegas.
+
 ## Publicar la partida con un tunel de Cloudflare
 
 El tunel deja la app accesible desde internet **sin abrir puertos en el router**:
@@ -217,6 +228,7 @@ la maquina, la comprobacion se salta sin fallar.
 ## Estructura
 
 ```
+.github/   workflow de despliegue en el runner self-hosted
 deploy.sh  prepara el .env (puerto libre + token) y levanta los contenedores
 scripts/   comprobaciones sueltas (validacion del docker-compose.yml)
 shared/    tipos y constantes compartidos (protocolo REST y WebSocket)
