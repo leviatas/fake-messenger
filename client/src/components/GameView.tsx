@@ -50,6 +50,11 @@ export default function GameView({
     send({ type: 'message:delete', messageId: message.id });
   }
 
+  function handleLeave() {
+    if (!window.confirm('Salir de la partida? Tendras que volver a entrar con tu codigo.')) return;
+    onLeave();
+  }
+
   return (
     <div className={`app ${state.mobilePane === 'chat' ? 'chat-open' : ''}`}>
       <Sidebar
@@ -61,7 +66,7 @@ export default function GameView({
         onSelectChannel={onSelectChannel}
         onNewChat={setModal}
         onKick={handleKick}
-        onLeave={onLeave}
+        onLeave={handleLeave}
         onSaveProfile={({ name, avatar }) => {
           if (name !== game.me.name) send({ type: 'member:name', name });
           if (avatar !== undefined && avatar !== (game.me.avatar ?? '')) send({ type: 'member:avatar', avatar });

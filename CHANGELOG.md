@@ -5,6 +5,11 @@ Cada cambio la sube y anade su linea aqui, siguiendo [SemVer](https://semver.org
 la tercera cifra para arreglos, la segunda para novedades y la primera para
 cambios que rompen algo.
 
+## 1.2.1
+
+- Salir de la partida pide confirmacion antes de echar a quien pulsa el boton.
+- El avatar de los mensajes se ve unas tres veces mas grande.
+
 ## 1.2.0
 
 - Cada persona puede ponerse un nombre propio (unico en la partida) y un
