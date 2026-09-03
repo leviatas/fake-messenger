@@ -1,0 +1,26 @@
+# Historial de cambios
+
+La version vive en el `package.json` de la raiz y se ve en el pie de la app.
+Cada cambio la sube y anade su linea aqui, siguiendo [SemVer](https://semver.org/lang/es/):
+la tercera cifra para arreglos, la segunda para novedades y la primera para
+cambios que rompen algo.
+
+## 1.1.0
+
+- El pie de la app enseña la version (`v1.1.0`) en el menu, en la pantalla de
+  codigos y dentro de la partida.
+- Pulsando la version se abre el **modo administrador**: pide la contrasena de
+  `ADMIN_PASSWORD` (o la de la mesa si no hay ninguna) y lista las partidas
+  creadas con sus participantes, sus codigos y su actividad, con la opcion de
+  borrarlas.
+- Enlace **Compartir** junto al nombre en la cabecera de la partida: genera
+  enlaces de invitacion que abren la app con el codigo puesto. El DM reparte
+  los tres roles; un jugador solo puede invitar a jugadores.
+- Quien sale de la partida puede volver a entrar con su mismo nombre mientras
+  no haya nadie conectado con el, y recupera sus chats privados.
+
+## 1.0.0
+
+- Primera version: partidas con tres codigos de acceso (DM, jugador y
+  voyerista), canal general, chats privados y grupos, borrado de mensajes,
+  expulsiones, despliegue con Docker y tunel de Cloudflare opcional.

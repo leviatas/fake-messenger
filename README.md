@@ -22,6 +22,7 @@ codigos de acceso: uno para el **DM**, otro para los **jugadores** y otro para l
 | Borrar mensajes | cualquiera | solo los propios | no |
 | Expulsar participantes | si | no | no |
 | Consultar los codigos de la partida | si | no | no |
+| Compartir un enlace de invitacion | los tres roles | solo de jugador | no |
 
 Los voyeristas son invisibles para los jugadores: no salen en la lista de
 participantes ni generan avisos ("X se ha unido") que ellos puedan leer.
@@ -213,6 +214,35 @@ la maquina, la comprobacion se salta sin fallar.
    privados o grupos desde la barra lateral; el DM ve esas conversaciones marcadas
    con 👁 y puede intervenir en ellas.
 
+Tambien vale el atajo: **🔗 Compartir**, junto a tu nombre en la cabecera de la
+partida, genera enlaces de invitacion del tipo `https://tu-dominio/?code=PJ-4K7QZP`,
+que abren la app con el codigo ya escrito. Se envian con la hoja de compartir del
+movil o, si no la hay, se copian al portapapeles. El DM reparte los tres roles; un
+jugador solo puede invitar a mas jugadores y un voyerista no invita a nadie.
+
+Si sales de la partida puedes volver a entrar con **tu mismo nombre** mientras no
+haya nadie conectado con el: recuperas tu sitio y tus chats privados. Con alguien
+conectado con ese nombre, la app lo rechaza.
+
+## Version y modo administrador
+
+La version (`1.1.0`) vive en el `package.json` de la raiz, es la unica fuente
+para el cliente y el servidor, y se ve en el pie de todas las pantallas. Cada
+cambio la sube y deja su linea en [CHANGELOG.md](CHANGELOG.md); el servidor la
+publica ademas en `GET /api/health`.
+
+Pulsando la version del pie se abre el **modo administrador**. Pide la
+contrasena de `ADMIN_PASSWORD` (si no hay ninguna, vale la de crear partidas) y
+enseña todas las partidas del servidor: nombre, fecha, numero de chats y de
+mensajes, ultima actividad, codigos de acceso y quien esta dentro, con un punto
+verde para quien esta conectado. Cada partida se puede **borrar**: se pierden
+sus chats, sus codigos dejan de valer y a quien siga dentro se le cierra la
+sesion.
+
+La sesion del panel dura una hora, vive solo en memoria del servidor (un
+reinicio la tira) y el acceso se corta durante cinco minutos tras cinco intentos
+fallidos seguidos.
+
 ## Variables de entorno
 
 | Variable | Por defecto | Para que sirve |
@@ -220,6 +250,7 @@ la maquina, la comprobacion se salta sin fallar.
 | `PORT` | `3000` | Puerto del servidor |
 | `HOST` | `0.0.0.0` | Interfaz de escucha |
 | `ROLEPLAY_PASSWORD` | `MeGustaElRol` | Contrasena para crear partidas |
+| `ADMIN_PASSWORD` | la de crear partidas | Contrasena del modo administrador (ver y borrar partidas) |
 | `DATA_DIR` | `./data` | Carpeta donde se guardan las partidas |
 | `CLIENT_DIR` | `client/dist` | SPA compilado que sirve el backend |
 | `PERSIST` | — | `0` desactiva el guardado en disco (lo usan los tests) |
@@ -235,10 +266,14 @@ shared/    tipos y constantes compartidos (protocolo REST y WebSocket)
 server/    Express + ws, estado de las partidas y reglas de visibilidad
   src/store.ts    quien ve que, quien puede escribir, borrar o expulsar
   src/server.ts   rutas REST, WebSocket y reparto de eventos
+  src/admin.ts    sesiones del panel de administracion y freno de intentos
+  src/version.ts  version leida del package.json de la raiz
   test/           tests de Vitest
 client/    React + Vite
   src/lib/useGame.ts   conexion WebSocket, reconexion y estado del chat
   src/lib/useViewportHeight.ts  alto real de la ventana (teclado del movil)
+  src/lib/share.ts     enlaces de invitacion (compartir y leer el codigo)
+  src/version.ts       version incrustada por Vite al compilar
   src/components/      menu, codigos, barra lateral, conversacion, modales
 ```
 
@@ -247,7 +282,12 @@ client/    React + Vite
 - El voyerista lee **todos** los chats, incluidos los privados: es lo propio del
   rol de espectador. No escribe, no crea chats y no se le puede meter en uno.
 - Los jugadores tambien pueden abrir un chat privado con el DM, ademas de entre ellos.
-- Una partida admite un solo DM activo y los nombres no se repiten dentro de la mesa.
+- Una partida admite un solo DM activo y los nombres no se repiten entre quienes
+  estan conectados. Un nombre libre se puede reclamar con el codigo de su rol, asi
+  que quien tenga el codigo puede ocupar el sitio de alguien desconectado: el codigo
+  sigue siendo la unica credencial de la app.
+- El modo administrador reparte las llaves de todo el servidor. Conviene darle una
+  `ADMIN_PASSWORD` propia, distinta de la de crear partidas.
 - Al expulsar a alguien se le invalida la sesion y se le saca de sus chats, pero el
   codigo de acceso sigue siendo valido: quien lo tenga puede volver a entrar con otro
   nombre. Rotar los codigos queda pendiente.

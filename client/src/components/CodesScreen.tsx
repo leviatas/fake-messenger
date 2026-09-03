@@ -1,5 +1,6 @@
 import type { CreateGameResponse } from '@rol/shared';
 import CodeList from './CodeList';
+import VersionFooter from './VersionFooter';
 
 interface Props {
   created: CreateGameResponse;
@@ -20,6 +21,7 @@ export default function CodesScreen({ created, onUseCode, onBack }: Props) {
         <button className="ghost" type="button" onClick={onBack}>
           Volver al menu
         </button>
+        <VersionFooter />
       </div>
     </main>
   );

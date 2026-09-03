@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { CreateGameResponse, JoinResponse } from '@rol/shared';
 import { api } from './lib/api';
 import { clearSession, loadSession, saveSession } from './lib/session';
+import { takeCodeFromUrl } from './lib/share';
 import { useGame } from './lib/useGame';
 import { useViewportHeight } from './lib/useViewportHeight';
 import CodesScreen from './components/CodesScreen';
@@ -13,7 +14,8 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const [token, setToken] = useState<string | null>(null);
   const [created, setCreated] = useState<CreateGameResponse | null>(null);
-  const [prefillCode, setPrefillCode] = useState('');
+  // Un enlace de invitacion trae el codigo en la URL; lo guardamos y la limpiamos.
+  const [prefillCode, setPrefillCode] = useState(takeCodeFromUrl);
 
   const { state, send, selectChannel, goBack, setError } = useGame(token);
 

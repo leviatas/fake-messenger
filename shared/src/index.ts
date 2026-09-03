@@ -67,6 +67,12 @@ export interface GameSummary {
   generalChannelId: string;
   /** Solo llega al DM, que es quien reparte los accesos. */
   codes?: GameCodes;
+  /**
+   * Codigo de jugador, para el enlace de invitacion. Llega al DM y a los
+   * jugadores (que ya lo tienen: es el que usaron para entrar), nunca a los
+   * voyeristas.
+   */
+  inviteCode?: string;
 }
 
 export interface Viewer {
@@ -135,3 +141,50 @@ export type ServerEvent =
   | { type: 'kicked' }
   | { type: 'pong' }
   | { type: 'error'; message: string };
+
+// ----------------------------------------------------------------- admin
+
+/** Cabecera con la que viaja el token del panel de administracion. */
+export const ADMIN_TOKEN_HEADER = 'x-admin-token';
+
+export interface AdminMember {
+  id: string;
+  name: string;
+  role: Role;
+  online: boolean;
+  kicked: boolean;
+  joinedAt: number;
+}
+
+/** Vista de una partida desde el panel: quien esta dentro y cuanto se ha hablado. */
+export interface AdminGame {
+  id: string;
+  name: string;
+  createdAt: number;
+  codes: GameCodes;
+  members: AdminMember[];
+  channelCount: number;
+  messageCount: number;
+  /** Fecha del ultimo mensaje, o la de creacion si no hay ninguno. */
+  lastActivity: number;
+}
+
+export interface AdminLoginRequest {
+  password: string;
+}
+
+export interface AdminLoginResponse {
+  token: string;
+  /** Version del servidor, para cotejarla con la del cliente. */
+  version: string;
+}
+
+export interface AdminGamesResponse {
+  version: string;
+  games: AdminGame[];
+}
+
+export interface HealthResponse {
+  ok: true;
+  version: string;
+}

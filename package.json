@@ -1,7 +1,7 @@
 {
   "name": "fake-messenger",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "App de mensajeria para partidas de rol: DM, jugadores y voyeristas",
   "workspaces": [
     "shared",

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { CreateGameResponse, JoinResponse } from '@rol/shared';
 import { api } from '../lib/api';
+import VersionFooter from './VersionFooter';
 
 interface Props {
   prefillCode?: string;
@@ -118,6 +119,8 @@ export default function MainMenu({ prefillCode, onCreated, onJoined }: Props) {
             </form>
           </section>
         </div>
+
+        <VersionFooter />
       </div>
     </main>
   );

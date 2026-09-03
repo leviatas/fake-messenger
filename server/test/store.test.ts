@@ -46,12 +46,100 @@ describe('union con codigo', () => {
     expect(() => store.joinGame('PJ-XXXXXX', 'Nadie')).toThrow(AppError);
   });
 
-  it('no permite dos nombres iguales ni dos DM', () => {
+  it('no permite dos nombres conectados iguales ni dos DM', () => {
     const { game, join } = setup();
-    join('player', 'Kaelen');
-    expect(() => store.joinGame(game.codes.player, 'kaelen')).toThrow(/ese nombre/i);
+    const kaelen = join('player', 'Kaelen');
+    kaelen.online = true;
+    expect(() => store.joinGame(game.codes.player, 'kaelen')).toThrow(/conectado con ese nombre/i);
     join('dm', 'Master');
     expect(() => store.joinGame(game.codes.dm, 'Otro')).toThrow(/ya tiene un DM/i);
+  });
+});
+
+describe('volver a entrar', () => {
+  it('recupera el sitio y los chats de quien se fue', () => {
+    const { game, join } = setup();
+    const kaelen = join('player', 'Kaelen');
+    const brissa = join('player', 'Brissa');
+    const { channel } = store.createChannel(game, kaelen, { kind: 'direct', memberIds: [brissa.id] });
+
+    // Kaelen se va: su sesion muere pero sigue siendo miembro.
+    const back = store.joinGame(game.codes.player, 'kaelen');
+    expect(back.member.id).toBe(kaelen.id);
+    expect(store.canSeeChannel(back.member, channel)).toBe(true);
+    expect(Object.values(game.members).filter((m) => !m.kicked)).toHaveLength(2);
+  });
+
+  it('invalida el token anterior al recuperar el nombre', () => {
+    const { game, join } = setup();
+    join('player', 'Kaelen');
+    const first = store.joinGame(game.codes.player, 'Brissa').token;
+    const second = store.joinGame(game.codes.player, 'Brissa').token;
+    expect(second).not.toBe(first);
+    expect(() => store.resumeSession(first)).toThrow(/no valida/i);
+    expect(store.resumeSession(second).member.name).toBe('Brissa');
+  });
+
+  it('el DM que se fue vuelve con su nombre', () => {
+    const { game, join } = setup();
+    const master = join('dm', 'Master');
+    expect(store.joinGame(game.codes.dm, 'Master').member.id).toBe(master.id);
+  });
+
+  it('no deja recuperar un nombre con un codigo de otro rol', () => {
+    const { game, join } = setup();
+    join('player', 'Kaelen');
+    expect(() => store.joinGame(game.codes.voyeur, 'Kaelen')).toThrow(/otro rol/i);
+  });
+
+  it('un expulsado no recupera su nombre: entra como alguien nuevo', () => {
+    const { game, join } = setup();
+    const dm = join('dm', 'Master');
+    const kaelen = join('player', 'Kaelen');
+    store.kickMember(game, dm, kaelen.id);
+    const again = store.joinGame(game.codes.player, 'Kaelen').member;
+    expect(again.id).not.toBe(kaelen.id);
+  });
+});
+
+describe('panel de administracion', () => {
+  it('lista las partidas con sus participantes y su actividad', () => {
+    const { game, join } = setup();
+    join('dm', 'Master');
+    const kaelen = join('player', 'Kaelen');
+    store.postMessage(game, kaelen, game.generalChannelId, 'Abro la puerta.');
+
+    const [summary] = store.listGames().map(store.projectAdminGame);
+    expect(summary?.name).toBe('La Caida de Vhalgar');
+    expect(summary?.members.map((m) => m.name)).toEqual(['Master', 'Kaelen']);
+    expect(summary?.codes.player).toBe(game.codes.player);
+    expect(summary?.messageCount).toBeGreaterThan(0);
+    expect(summary?.lastActivity).toBeGreaterThanOrEqual(summary!.createdAt);
+  });
+
+  it('borrar una partida invalida sus codigos y sus sesiones', () => {
+    const { game, join } = setup();
+    join('player', 'Kaelen');
+    const token = store.joinGame(game.codes.player, 'Brissa').token;
+
+    store.deleteGame(game.id);
+
+    expect(store.listGames()).toHaveLength(0);
+    expect(() => store.getGame(game.id)).toThrow(/ya no existe/i);
+    expect(() => store.joinGame(game.codes.player, 'Otro')).toThrow(/no corresponde/i);
+    expect(() => store.resumeSession(token)).toThrow(/no valida/i);
+  });
+
+  it('el codigo de invitacion llega al DM y a los jugadores, no al voyerista', () => {
+    const { game, join } = setup();
+    const dm = join('dm', 'Master');
+    const kaelen = join('player', 'Kaelen');
+    const sombra = join('voyeur', 'Sombra');
+
+    expect(store.projectState(game, dm).game.inviteCode).toBe(game.codes.player);
+    expect(store.projectState(game, kaelen).game.inviteCode).toBe(game.codes.player);
+    expect(store.projectState(game, sombra).game.inviteCode).toBeUndefined();
+    expect(store.projectState(game, kaelen).game.codes).toBeUndefined();
   });
 });
 

@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { ROLE_LABEL, type GameState, type PublicChannel, type PublicMember } from '@rol/shared';
+import { ROLE_LABEL, type GameCodes, type GameState, type PublicChannel, type PublicMember } from '@rol/shared';
 import type { Connection } from '../lib/useGame';
 import { channelIcon } from '../lib/format';
 import CodeList from './CodeList';
+import ShareModal from './ShareModal';
+import VersionFooter from './VersionFooter';
 
 type Tab = 'chats' | 'people' | 'codes';
 
@@ -37,7 +39,13 @@ export default function Sidebar({
   onLeave,
 }: Props) {
   const [tab, setTab] = useState<Tab>('chats');
+  const [sharing, setSharing] = useState(false);
   const isDm = game.me.role === 'dm';
+
+  // El DM reparte los tres roles; un jugador solo puede invitar a jugadores.
+  const shareCodes: Partial<Record<keyof GameCodes, string>> =
+    game.game.codes ?? (game.game.inviteCode ? { player: game.game.inviteCode } : {});
+  const canShare = Object.keys(shareCodes).length > 0;
 
   const players = game.members.filter((m) => m.role === 'player');
   const dm = game.members.filter((m) => m.role === 'dm');
@@ -65,7 +73,13 @@ export default function Sidebar({
         <div className="sidebar-id">
           <h1 className="game-name">{game.game.name}</h1>
           <p className="me-line">
-            {game.me.name} <span className={`badge ${game.me.role}`}>{ROLE_LABEL[game.me.role]}</span>
+            <span className="me-name">{game.me.name}</span>
+            <span className={`badge ${game.me.role}`}>{ROLE_LABEL[game.me.role]}</span>
+            {canShare && (
+              <button type="button" className="share-link" onClick={() => setSharing(true)}>
+                🔗 Compartir
+              </button>
+            )}
           </p>
         </div>
         <span
@@ -156,7 +170,12 @@ export default function Sidebar({
         <button type="button" className="ghost small" onClick={onLeave}>
           Salir de la partida
         </button>
+        <VersionFooter />
       </footer>
+
+      {sharing && (
+        <ShareModal gameName={game.game.name} codes={shareCodes} onClose={() => setSharing(false)} />
+      )}
     </aside>
   );
 }
