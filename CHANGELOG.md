@@ -5,6 +5,14 @@ Cada cambio la sube y anade su linea aqui, siguiendo [SemVer](https://semver.org
 la tercera cifra para arreglos, la segunda para novedades y la primera para
 cambios que rompen algo.
 
+## 1.4.0
+
+- Junto al campo de escribir hay un boton de clip para adjuntar una imagen
+  sin arrastrarla: en el movil abre el selector del sistema, que deja elegir
+  entre la camara y la galeria.
+- En movil, el campo de escribir ocupa toda la altura de su fila, a la par
+  con los botones de enviar y adjuntar.
+
 ## 1.3.0
 
 - Arrastrar una imagen y soltarla sobre un chat abre un cuadro para anadirle

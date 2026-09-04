@@ -34,7 +34,7 @@ export default function Conversation({
   onTyping,
 }: Props) {
   const [dragging, setDragging] = useState(false);
-  const [droppedImage, setDroppedImage] = useState<File | null>(null);
+  const [pendingImage, setPendingImage] = useState<File | null>(null);
   const dragCounter = useRef(0);
 
   const canDrop = Boolean(channel?.canPost);
@@ -66,7 +66,11 @@ export default function Conversation({
     setDragging(false);
     if (!canDrop) return;
     const file = Array.from(event.dataTransfer.files).find((f) => f.type.startsWith('image/'));
-    if (file) setDroppedImage(file);
+    if (file) setPendingImage(file);
+  }
+
+  function handleAttach(file: File) {
+    if (canDrop) setPendingImage(file);
   }
 
   if (!channel) {
@@ -110,7 +114,7 @@ export default function Conversation({
       </p>
 
       {channel.canPost ? (
-        <Composer channelId={channel.id} onSend={onSend} onTyping={onTyping} />
+        <Composer channelId={channel.id} onSend={onSend} onTyping={onTyping} onAttachImage={handleAttach} />
       ) : (
         <p className="composer-locked">
           {game.me.role === 'voyeur'
@@ -125,14 +129,14 @@ export default function Conversation({
         </div>
       )}
 
-      {droppedImage && (
+      {pendingImage && (
         <ImageComposeModal
-          file={droppedImage}
+          file={pendingImage}
           token={token}
-          onCancel={() => setDroppedImage(null)}
+          onCancel={() => setPendingImage(null)}
           onSend={({ body, image }) => {
             onSend(body, image);
-            setDroppedImage(null);
+            setPendingImage(null);
           }}
         />
       )}

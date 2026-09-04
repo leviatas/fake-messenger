@@ -557,10 +557,24 @@ button.small { padding: 6px 10px; font-size: 13px; }
 .composer textarea {
   margin: 0;
   resize: none;
+  min-height: 42px;
   max-height: 140px;
+  line-height: 1.35;
   border-radius: 20px;
   padding: 10px 14px;
 }
+.composer .attach {
+  flex: none;
+  width: 42px; height: 42px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  font-size: 19px;
+}
+.composer .attach:hover { background: var(--panel-2); color: var(--text); }
 .composer .send {
   flex: none;
   width: 42px; height: 42px;
@@ -875,7 +889,8 @@ button.danger:hover { background: rgba(217,83,79,.15); }
     gap: 8px;
     padding: 10px 12px calc(10px + var(--safe-bottom));
   }
-  .composer textarea { font-size: 16px; padding: 10px 14px; }
+  .composer textarea { font-size: 16px; padding: 11px 14px; min-height: var(--tap); }
+  .composer .attach { width: var(--tap); height: var(--tap); }
   .composer .send { width: var(--tap); height: var(--tap); }
   .composer-locked { padding: 16px 16px calc(16px + var(--safe-bottom)); }
 

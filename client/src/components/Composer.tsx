@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from 'react';
 import { MAX_BODY_LENGTH } from '@rol/shared';
 
 interface Props {
   channelId: string;
   onSend: (body: string) => void;
   onTyping: (on: boolean) => void;
+  onAttachImage: (file: File) => void;
 }
 
-export default function Composer({ channelId, onSend, onTyping }: Props) {
+export default function Composer({ channelId, onSend, onTyping, onAttachImage }: Props) {
   const [body, setBody] = useState('');
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const typingRef = useRef(false);
   const stopTimer = useRef<number | undefined>(undefined);
 
@@ -20,11 +22,22 @@ export default function Composer({ channelId, onSend, onTyping }: Props) {
   }, [channelId]);
 
   useEffect(() => {
+    resizeArea();
+  }, [body]);
+
+  // El navegador movil a veces mide el alto antes de asentar la fuente o la
+  // barra de direcciones; recalcular al redimensionar evita que se quede corto.
+  useEffect(() => {
+    window.addEventListener('resize', resizeArea);
+    return () => window.removeEventListener('resize', resizeArea);
+  }, []);
+
+  function resizeArea() {
     const area = areaRef.current;
     if (!area) return;
     area.style.height = 'auto';
     area.style.height = `${Math.min(area.scrollHeight, 140)}px`;
-  }, [body]);
+  }
 
   function stopTyping() {
     window.clearTimeout(stopTimer.current);
@@ -59,6 +72,12 @@ export default function Composer({ channelId, onSend, onTyping }: Props) {
     }
   }
 
+  function handleFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file && file.type.startsWith('image/')) onAttachImage(file);
+  }
+
   return (
     <form className="composer" onSubmit={submit}>
       <textarea
@@ -73,6 +92,21 @@ export default function Composer({ channelId, onSend, onTyping }: Props) {
         }}
         onKeyDown={handleKeyDown}
         onBlur={stopTyping}
+      />
+      <button
+        type="button"
+        className="attach"
+        aria-label="Adjuntar imagen"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        📎
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        hidden
+        onChange={handleFile}
       />
       <button className="send" type="submit" aria-label="Enviar">
         ➤
