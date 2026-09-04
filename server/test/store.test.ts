@@ -286,6 +286,44 @@ describe('mensajes', () => {
     const msg = store.postMessage(game, kaelen, game.generalChannelId, 'hola').message;
     expect(() => store.deleteMessage(game, voyeur, msg.id)).toThrow(/solo puedes leer/i);
   });
+
+  it('guarda una foto y sirve su fichero', () => {
+    const url = store.saveChatImage(Buffer.from('foto-falsa'), 'image/jpeg');
+    expect(url).toMatch(/^\/uploads\/.+\.jpg$/);
+    const filePath = path.join(store.CHAT_IMAGE_DIR, url.replace('/uploads/', ''));
+    expect(fs.readFileSync(filePath, 'utf8')).toBe('foto-falsa');
+  });
+
+  it('una imagen sin pie de foto es un mensaje valido', () => {
+    const { game, kaelen } = chatScenario();
+    const url = store.saveChatImage(Buffer.from('foto'), 'image/png');
+    const { message } = store.postMessage(game, kaelen, game.generalChannelId, '', url);
+    expect(message.image).toBe(url);
+    expect(message.body).toBe('');
+  });
+
+  it('rechaza un mensaje sin texto ni imagen', () => {
+    const { game, kaelen } = chatScenario();
+    expect(() => store.postMessage(game, kaelen, game.generalChannelId, '   ', undefined)).toThrow(/vacio/i);
+  });
+
+  it('rechaza una imagen que no hayamos guardado nosotros', () => {
+    const { game, kaelen } = chatScenario();
+    expect(() =>
+      store.postMessage(game, kaelen, game.generalChannelId, '', '/uploads/inventada.png'),
+    ).toThrow(/no esta disponible|invalida/i);
+    expect(() =>
+      store.postMessage(game, kaelen, game.generalChannelId, '', 'https://otra-web.com/x.png'),
+    ).toThrow(/invalida/i);
+  });
+
+  it('al borrar un mensaje tambien se quita la imagen', () => {
+    const { game, kaelen } = chatScenario();
+    const url = store.saveChatImage(Buffer.from('foto'), 'image/png');
+    const { message } = store.postMessage(game, kaelen, game.generalChannelId, 'mira esto', url);
+    store.deleteMessage(game, kaelen, message.id);
+    expect(store.projectMessage(message).image).toBeNull();
+  });
 });
 
 describe('perfil', () => {

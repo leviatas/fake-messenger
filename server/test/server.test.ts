@@ -199,6 +199,74 @@ describe('subida de avatar', () => {
   });
 });
 
+describe('subida de foto para el chat', () => {
+  async function uploadAs(token: string | undefined, body: Buffer, mimeType: string) {
+    const form = new FormData();
+    form.append('image', new Blob([body], { type: mimeType }), 'foto.png');
+    return fetch(`${base}/api/chat-image`, {
+      method: 'POST',
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+  }
+
+  it('exige autenticarse con el token de sesion', async () => {
+    const res = await uploadAs(undefined, Buffer.from('x'), 'image/png');
+    expect(res.status).toBe(401);
+  });
+
+  it('rechaza un formato no admitido', async () => {
+    const codes = await newGame();
+    const { token } = await join(codes.player, 'Kaelen');
+    const res = await uploadAs(token, Buffer.from('x'), 'image/svg+xml');
+    expect(res.status).toBe(400);
+  });
+
+  it('guarda la foto y la sirve en /uploads, pero no la asocia a ningun mensaje por si sola', async () => {
+    const codes = await newGame();
+    const { token } = await join(codes.player, 'Kaelen');
+
+    const res = await uploadAs(token, Buffer.from('una foto'), 'image/png');
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { image: string };
+    expect(data.image).toMatch(/^\/uploads\/.+\.png$/);
+
+    const file = await fetch(`${base}${data.image}`);
+    expect(file.status).toBe(200);
+    expect(await file.text()).toBe('una foto');
+  });
+
+  it('la foto subida se puede enviar como mensaje sin pie de foto, y se ve en el chat', async () => {
+    const codes = await newGame();
+    const { token } = await join(codes.player, 'Kaelen');
+    const kaelen = await TestClient.connect(token);
+
+    const uploaded = await uploadAs(token, Buffer.from('una foto'), 'image/jpeg');
+    const { image } = (await uploaded.json()) as { image: string };
+
+    const generalId = kaelen.state.game.generalChannelId;
+    kaelen.send({ type: 'message:send', channelId: generalId, body: '', image });
+
+    const event = await kaelen.waitFor('message', (e) => e.type === 'message' && e.message.image === image);
+    expect(event.type).toBe('message');
+    if (event.type === 'message') {
+      expect(event.message.image).toBe(image);
+      expect(event.message.body).toBe('');
+    }
+  });
+
+  it('rechaza mandar como imagen una URL que no hayamos subido', async () => {
+    const codes = await newGame();
+    const { token } = await join(codes.player, 'Kaelen');
+    const kaelen = await TestClient.connect(token);
+
+    const generalId = kaelen.state.game.generalChannelId;
+    kaelen.send({ type: 'message:send', channelId: generalId, body: '', image: '/uploads/inventada.png' });
+
+    await kaelen.waitFor('error');
+  });
+});
+
 describe('flujo por WebSocket', () => {
   it('reparte los mensajes del general a toda la mesa', async () => {
     const codes = await newGame();

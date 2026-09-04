@@ -50,12 +50,33 @@ async function uploadAvatar(token: string, image: Blob): Promise<{ avatar: strin
   return { avatar: data.avatar };
 }
 
+async function uploadChatImage(token: string, image: Blob): Promise<{ image: string }> {
+  const form = new FormData();
+  form.append('image', image, 'foto.jpg');
+
+  let res: Response;
+  try {
+    res = await fetch('/api/chat-image', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}` },
+      body: form,
+    });
+  } catch {
+    throw new Error('No se pudo contactar con el servidor.');
+  }
+
+  const data = (await res.json().catch(() => ({}))) as { error?: string; image?: string };
+  if (!res.ok || !data.image) throw new Error(data.error ?? 'Error inesperado del servidor.');
+  return { image: data.image };
+}
+
 export const api = {
   createGame: (name: string, password: string) =>
     post<CreateGameResponse>('/api/games', { name, password }),
   join: (code: string, name: string) => post<JoinResponse>('/api/join', { code, name }),
   session: (token: string) => post<SessionResponse>('/api/session', { token }),
   uploadAvatar,
+  uploadChatImage,
 
   // ------------------------------------------------ panel de administracion
   adminLogin: (password: string) => post<AdminLoginResponse>('/api/admin/login', { password }),

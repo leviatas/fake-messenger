@@ -23,6 +23,9 @@ export function isImageAvatar(avatar: string | null | undefined): avatar is stri
   return !!avatar && avatar.startsWith(AVATAR_IMAGE_PREFIX);
 }
 
+/** Fotos enviadas en un chat: mucho mas margen que un avatar. */
+export const MAX_CHAT_IMAGE_BYTES = 5 * 1024 * 1024;
+
 export const ROLE_LABEL: Record<Role, string> = {
   dm: 'DM',
   player: 'Jugador',
@@ -64,6 +67,8 @@ export interface PublicMessage {
   authorRole: Role | null;
   authorAvatar: string | null;
   body: string;
+  /** URL de la imagen adjunta, si la hay; el pie de foto es el body. */
+  image: string | null;
   ts: number;
   system: boolean;
   deleted: boolean;
@@ -142,7 +147,7 @@ export interface ApiError {
 export type ClientCommand =
   | { type: 'auth'; token: string }
   | { type: 'ping' }
-  | { type: 'message:send'; channelId: string; body: string }
+  | { type: 'message:send'; channelId: string; body: string; image?: string }
   | { type: 'message:delete'; messageId: string }
   | { type: 'member:avatar'; avatar: string }
   | { type: 'member:name'; name: string }

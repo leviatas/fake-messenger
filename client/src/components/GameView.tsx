@@ -77,9 +77,10 @@ export default function GameView({
         game={game}
         channel={activeChannel}
         typingNames={typingNames}
+        token={token}
         onBack={onBack}
-        onSend={(body) => {
-          if (activeChannel) send({ type: 'message:send', channelId: activeChannel.id, body });
+        onSend={(body, image) => {
+          if (activeChannel) send({ type: 'message:send', channelId: activeChannel.id, body, image });
         }}
         onDelete={handleDelete}
         onTyping={(on) => {

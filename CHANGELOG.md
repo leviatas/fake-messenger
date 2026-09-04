@@ -5,6 +5,12 @@ Cada cambio la sube y anade su linea aqui, siguiendo [SemVer](https://semver.org
 la tercera cifra para arreglos, la segunda para novedades y la primera para
 cambios que rompen algo.
 
+## 1.3.0
+
+- Arrastrar una imagen y soltarla sobre un chat abre un cuadro para anadirle
+  un pie de foto (opcional) y enviarla. Se ve en el chat junto a los demas
+  mensajes, con su avatar, su hora y su pie de foto si lo tiene.
+
 ## 1.2.2
 
 - El avatar de los mensajes se ve otras tres veces mas grande (unas nueve

@@ -22,8 +22,12 @@ const PERSIST_ENABLED = process.env.PERSIST !== '0';
 
 /** Carpeta donde se guardan las imagenes de avatar subidas; se sirve tal cual en /avatars. */
 export const AVATAR_DIR = path.join(DATA_DIR, 'avatars');
+/** Carpeta donde se guardan las fotos enviadas en los chats; se sirve tal cual en /uploads. */
+export const CHAT_IMAGE_DIR = path.join(DATA_DIR, 'uploads');
+const CHAT_IMAGE_PREFIX = '/uploads/';
+const CHAT_IMAGE_PATTERN = /^\/uploads\/[A-Za-z0-9_-]+\.(png|jpe?g|webp|gif)$/;
 
-const AVATAR_MIME_EXT: Record<string, string> = {
+const IMAGE_MIME_EXT: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
@@ -279,7 +283,7 @@ export function setAvatar(game: Game, member: Member, rawAvatar: unknown): Membe
 
 /** Guarda la imagen subida como avatar y sustituye la anterior si la habia. */
 export function saveAvatarImage(member: Member, buffer: Buffer, mimeType: string): Member {
-  const ext = AVATAR_MIME_EXT[mimeType];
+  const ext = IMAGE_MIME_EXT[mimeType];
   if (!ext) throw new AppError('Solo se admiten imagenes PNG, JPEG, WEBP o GIF.');
 
   fs.mkdirSync(AVATAR_DIR, { recursive: true });
@@ -291,6 +295,28 @@ export function saveAvatarImage(member: Member, buffer: Buffer, mimeType: string
   discardAvatarImage(previous);
   schedulePersist();
   return member;
+}
+
+/** Guarda una foto enviada en un chat y devuelve la URL con la que se sirve. */
+export function saveChatImage(buffer: Buffer, mimeType: string): string {
+  const ext = IMAGE_MIME_EXT[mimeType];
+  if (!ext) throw new AppError('Solo se admiten imagenes PNG, JPEG, WEBP o GIF.');
+
+  fs.mkdirSync(CHAT_IMAGE_DIR, { recursive: true });
+  const fileName = `${makeId('img')}.${ext}`;
+  fs.writeFileSync(path.join(CHAT_IMAGE_DIR, fileName), buffer);
+  return `${CHAT_IMAGE_PREFIX}${fileName}`;
+}
+
+/** Solo se aceptan imagenes que hayamos guardado nosotros en /uploads. */
+function cleanImage(raw: unknown): string | null {
+  const value = String(raw ?? '').trim();
+  if (!value) return null;
+  if (!CHAT_IMAGE_PATTERN.test(value)) throw new AppError('Imagen invalida.');
+  if (!fs.existsSync(path.join(CHAT_IMAGE_DIR, value.slice(CHAT_IMAGE_PREFIX.length)))) {
+    throw new AppError('Esa imagen ya no esta disponible.');
+  }
+  return value;
 }
 
 /** El nombre puede cambiar, pero siempre debe ser unico entre quienes siguen en la partida. */
@@ -431,6 +457,7 @@ export function systemMessage(
     authorRole: null,
     authorAvatar: null,
     body,
+    image: null,
     ts: now(),
     system: true,
     deleted: false,
@@ -446,6 +473,7 @@ export function postMessage(
   author: Member,
   channelId: unknown,
   rawBody: unknown,
+  rawImage?: unknown,
 ): { channel: Channel; message: Message } {
   const channel = getChannel(game, channelId);
   if (!canSeeChannel(author, channel)) throw new AppError('Ese chat no existe.', 404);
@@ -456,8 +484,9 @@ export function postMessage(
     );
   }
 
+  const image = cleanImage(rawImage);
   const body = String(rawBody ?? '').replace(/\r\n/g, '\n').trim();
-  if (!body) throw new AppError('El mensaje esta vacio.');
+  if (!body && !image) throw new AppError('El mensaje esta vacio.');
   if (body.length > MAX_BODY_LENGTH) {
     throw new AppError(`El mensaje no puede superar ${MAX_BODY_LENGTH} caracteres.`);
   }
@@ -470,6 +499,7 @@ export function postMessage(
     authorRole: author.role,
     authorAvatar: author.avatar,
     body,
+    image,
     ts: now(),
     system: false,
     deleted: false,
@@ -509,6 +539,7 @@ export function deleteMessage(
   message.deleted = true;
   message.deletedBy = isOwn ? 'author' : 'dm';
   message.body = '';
+  message.image = null;
   schedulePersist();
   return { channel, message };
 }
@@ -549,6 +580,7 @@ export function projectMessage(message: Message): PublicMessage {
     authorRole: message.authorRole,
     authorAvatar: message.authorAvatar,
     body: message.deleted ? '' : message.body,
+    image: message.deleted ? null : message.image,
     ts: message.ts,
     system: message.system,
     deleted: message.deleted,
@@ -685,7 +717,10 @@ export function loadFromDisk(): void {
         member.avatar ??= null;
       }
       for (const list of Object.values(game.messages)) {
-        for (const message of list) message.authorAvatar ??= null;
+        for (const message of list) {
+          message.authorAvatar ??= null;
+          message.image ??= null;
+        }
       }
       games.set(game.id, game);
       for (const role of Object.keys(game.codes) as Role[]) {

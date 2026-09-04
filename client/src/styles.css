@@ -374,6 +374,7 @@ button.small { padding: 6px 10px; font-size: 13px; }
 /* ---------------------------------------------------------- conversacion */
 
 .conversation {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -381,6 +382,26 @@ button.small { padding: 6px 10px; font-size: 13px; }
   background:
     radial-gradient(700px 400px at 80% -10%, #171d27 0%, transparent 70%),
     var(--bg);
+}
+
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: grid;
+  place-items: center;
+  background: rgba(22, 19, 12, 0.72);
+  border: 2px dashed var(--accent);
+  pointer-events: none;
+}
+.drop-overlay p {
+  margin: 0;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .conv-head {
@@ -469,6 +490,13 @@ button.small { padding: 6px 10px; font-size: 13px; }
   border-color: #3a6f59;
   border-bottom-left-radius: 14px;
   border-bottom-right-radius: 4px;
+}
+.msg-image {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: 10px;
+  margin-bottom: 6px;
 }
 .msg .author {
   display: block;
@@ -756,6 +784,17 @@ button.danger:hover { background: rgba(217,83,79,.15); }
   margin: 14px 0;
 }
 .profile-avatar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.image-preview {
+  display: grid;
+  place-items: center;
+  max-height: 46vh;
+  margin: 10px 0;
+  border-radius: 12px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.image-preview img { display: block; max-width: 100%; max-height: 46vh; object-fit: contain; }
 
 .toast {
   position: fixed;
