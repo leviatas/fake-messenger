@@ -1,7 +1,7 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { AVATAR_PRESETS, MAX_AVATAR_LENGTH, MAX_NAME_LENGTH, isImageAvatar } from '@rol/shared';
 import { api } from '../lib/api';
-import { resizeAvatarImage } from '../lib/avatarImage';
+import { resizeAvatarImage } from '../lib/imageResize';
 import Avatar from './Avatar';
 
 interface Props {

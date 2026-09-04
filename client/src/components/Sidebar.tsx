@@ -29,7 +29,8 @@ function previewOf(game: GameState, channel: PublicChannel): string {
   if (!last) return 'Sin mensajes todavia';
   if (last.deleted) return 'Mensaje eliminado';
   if (last.system) return last.body;
-  return `${last.authorName}: ${last.body}`;
+  const body = last.image ? `📷 ${last.body || 'Imagen'}` : last.body;
+  return `${last.authorName}: ${body}`;
 }
 
 export default function Sidebar({

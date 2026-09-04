@@ -5,13 +5,26 @@ import { fileURLToPath } from 'node:url';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import multer, { MulterError } from 'multer';
 import { WebSocket, WebSocketServer } from 'ws';
-import { ADMIN_TOKEN_HEADER, MAX_AVATAR_IMAGE_BYTES, type ClientCommand, type ServerEvent } from '@rol/shared';
+import {
+  ADMIN_TOKEN_HEADER,
+  MAX_AVATAR_IMAGE_BYTES,
+  MAX_CHAT_IMAGE_BYTES,
+  type ClientCommand,
+  type ServerEvent,
+} from '@rol/shared';
 import * as admin from './admin.js';
 import * as store from './store.js';
 import { AppError, type Channel, type Game, type Member } from './types.js';
 import { APP_VERSION } from './version.js';
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_AVATAR_IMAGE_BYTES, files: 1 } });
+const uploadAvatar = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_AVATAR_IMAGE_BYTES, files: 1 },
+});
+const uploadChatImage = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_CHAT_IMAGE_BYTES, files: 1 },
+});
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_CLIENT_DIR = path.resolve(here, '../../client/dist');
@@ -130,7 +143,7 @@ export function createServer(options: ServerOptions = {}) {
   app.post(
     '/api/avatar',
     (req, res, next) => {
-      upload.single('avatar')(req, res, (err: unknown) => {
+      uploadAvatar.single('avatar')(req, res, (err: unknown) => {
         if (!err) return next();
         if (err instanceof MulterError && err.code === 'LIMIT_FILE_SIZE') {
           return next(new AppError(`La imagen no puede superar ${Math.round(MAX_AVATAR_IMAGE_BYTES / 1024)} KB.`));
@@ -147,6 +160,29 @@ export function createServer(options: ServerOptions = {}) {
       store.saveAvatarImage(member, req.file.buffer, req.file.mimetype);
       broadcastState(game);
       res.json({ avatar: member.avatar });
+    },
+  );
+
+  // Subir una foto para enviarla en un chat: solo hace falta autenticarse, el mensaje llega despues por WebSocket.
+  app.post(
+    '/api/chat-image',
+    (req, res, next) => {
+      uploadChatImage.single('image')(req, res, (err: unknown) => {
+        if (!err) return next();
+        if (err instanceof MulterError && err.code === 'LIMIT_FILE_SIZE') {
+          return next(new AppError(`La imagen no puede superar ${Math.round(MAX_CHAT_IMAGE_BYTES / 1024 / 1024)} MB.`));
+        }
+        next(new AppError('No se pudo procesar la imagen.'));
+      });
+    },
+    (req, res) => {
+      const header = req.get('authorization') ?? '';
+      const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+      store.resumeSession(token);
+      if (!req.file) throw new AppError('Falta la imagen.');
+
+      const image = store.saveChatImage(req.file.buffer, req.file.mimetype);
+      res.json({ image });
     },
   );
 
@@ -197,11 +233,19 @@ export function createServer(options: ServerOptions = {}) {
     express.static(store.AVATAR_DIR, { setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff') }),
   );
 
+  // Fotos enviadas en los chats.
+  app.use(
+    '/uploads',
+    express.static(store.CHAT_IMAGE_DIR, {
+      setHeaders: (res) => res.setHeader('X-Content-Type-Options', 'nosniff'),
+    }),
+  );
+
   // ------------------------------------------------------- estaticos del SPA
 
   if (fs.existsSync(clientDir)) {
     app.use(express.static(clientDir));
-    app.get(/^\/(?!api\/|ws$|avatars\/).*/, (_req, res) => {
+    app.get(/^\/(?!api\/|ws$|avatars\/|uploads\/).*/, (_req, res) => {
       res.sendFile(path.join(clientDir, 'index.html'));
     });
   }
@@ -291,7 +335,7 @@ export function createServer(options: ServerOptions = {}) {
         return send(ws, { type: 'pong' });
 
       case 'message:send': {
-        const { channel, message } = store.postMessage(game, member, command.channelId, command.body);
+        const { channel, message } = store.postMessage(game, member, command.channelId, command.body, command.image);
         broadcastToChannel(game, channel, { type: 'message', message: store.projectMessage(message) });
         return;
       }

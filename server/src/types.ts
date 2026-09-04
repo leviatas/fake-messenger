@@ -29,6 +29,7 @@ export interface Message {
   /** Avatar del autor en el momento de escribir, aunque luego lo cambie. */
   authorAvatar: string | null;
   body: string;
+  image: string | null;
   ts: number;
   system: boolean;
   deleted: boolean;
